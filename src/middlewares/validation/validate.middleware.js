@@ -214,6 +214,11 @@ function validate(fields) {
                 if(field.value.length > 500) {
                     errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Comment text must be less than 500 characters!", data: field.value }})
                 }
+            case "role":
+                if(!field.value || field.value.trim().length === 0) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Role must be not empty!", data: field.value }})
+                    break
+                }
         }
     }
     return {

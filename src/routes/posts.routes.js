@@ -33,7 +33,6 @@ const unlikePostController = require('../controllers/posts/unlikePost.controller
 
 const PostPolicy = require('../authorization/policies/post.policy')
 
-
 router.get(
     '/',
     validateMiddleware(getPostsSchema),

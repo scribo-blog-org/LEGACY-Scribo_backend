@@ -1,6 +1,6 @@
 const { getPostById } = require('../../services/posts.services');
 const ForbiddenError  = require('../../errors/ForbiddenError');
-const hasPermissions = require('../hasPermissions');
+const { hasPermissions } = require('../roleChecks');
 const PERMISSIONS = require('../permissions');
 
 const NotFoundError = require('../../errors/NotFoundError');
