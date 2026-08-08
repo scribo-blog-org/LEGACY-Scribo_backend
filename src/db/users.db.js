@@ -7,7 +7,6 @@ async function getUsersByQuery(query = {}, options = { }) {
         with_notifications: false,
         ...options,
     };
-
     let users = await User.find(query)
 
     if(users.length === 0) {
@@ -202,11 +201,34 @@ async function createNewUser(user) {
     }
 }
 
+async function updateUserRole(userId, newRole) {
+    const updatedUser = await User.findOneAndUpdate(
+        { _id: userId },
+        { role: newRole },
+        { new: true }
+    );
+
+    if(!updatedUser) {
+        return {
+            status: false,
+            message: "User not found!",
+            data: null
+        }
+    }
+
+    return {
+        status: true,
+        message: "Success updated user role",
+        data: updatedUser
+    }
+}
+
 module.exports = {
     getUsersByQuery,
     getUserByQuery,
     followToUserById,
     unfollowToUserById,
     removePostFromSaved,
-    createNewUser
+    createNewUser,
+    updateUserRole
 }

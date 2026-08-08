@@ -1,5 +1,5 @@
 const ForbiddenError  = require('../../errors/ForbiddenError');
-const hasPermissions = require('../hasPermissions');
+const { hasPermissions } = require('../roleChecks');
 const PERMISSIONS = require('../permissions');
 
 

@@ -2,12 +2,17 @@ const ROLES = require("./roles");
 const PERMISSIONS = require("./permissions");
 
 module.exports = {
-
-    [ROLES.USER]: [
-    ],
+    [ROLES.USER]: [],
 
     [ROLES.AUTHOR]: [
         PERMISSIONS.CREATE_POST,
+    ],
+
+    [ROLES.MODERATOR]: [
+        PERMISSIONS.CREATE_POST,
+        PERMISSIONS.EDIT_ANY_POST,
+        PERMISSIONS.DELETE_ANY_POST,
+        PERMISSIONS.DELETE_ANY_COMMENT,
     ],
 
     [ROLES.ADMIN]: [
@@ -23,7 +28,6 @@ module.exports = {
 
         PERMISSIONS.MANAGE_ROLES,
         PERMISSIONS.VIEW_LOGS,
-
     ],
 
     [ROLES.TECH_ADMIN]: [

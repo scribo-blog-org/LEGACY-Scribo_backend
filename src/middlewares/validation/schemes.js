@@ -169,6 +169,11 @@ const deleteCategorySchema = new Schema()
     .required('id', { source: 'params' })
     .build();
 
+const updateRoleSchema = new Schema()
+    .required('id', { source: 'params' })
+    .required('role')
+    .build();
+
 module.exports = {
     loginUsernameSchema,
     loginGoogleSchema,
@@ -194,5 +199,6 @@ module.exports = {
     deleteCategorySchema,
     deleteCommentSchema,
     editCommentSchema,
-    likeCommentSchema
+    likeCommentSchema,
+    updateRoleSchema
 }

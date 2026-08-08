@@ -1,10 +1,16 @@
-const { getUserByQuery, followToUserById, unfollowToUserById , getUsersByQuery } = require('../db/users.db')
+const Mongoose = require('mongoose')
+
+const { getUserByQuery, followToUserById, unfollowToUserById , getUsersByQuery, updateUserRole } = require('../db/users.db')
 const { getPostByQuery } = require('../db/posts')
 const { getCommentsByQuery } = require('../db/comments')
 const { addNotificationToUserById } = require('../db/profile')
+
+const { canManageRole } = require('../authorization/roleChecks')
+
 const AppError = require('../errors/AppError')
 const NotFoundError = require('../errors/NotFoundError')
 const ConflictError = require('../errors/ConflictError')
+const ForbiddenError = require('../errors/ForbiddenError')
 
 async function getUserByNickName(nickName, options = {}) {
     if(!nickName) {
@@ -138,9 +144,56 @@ async function unfollow(userId, profile) {
     }
 }
 
+async function updateRole(userId, newRole, profile) {
+    if(!userId || !newRole || !profile) {
+        throw new AppError({ message: "User id, new role and profile are required" })
+    }
+    
+    const user = await getUserByQuery({ "_id": userId })
+    
+    if(!user.status) {
+        throw new NotFoundError({ message: "User not found" })
+    }
+
+    const canManage = canManageRole(profile.role, newRole, user.data.role)
+    
+    if(!canManage) {
+        throw new ForbiddenError({ message: "You do not have permission to update this user's role" })
+    }
+
+    if(user.data.role === newRole) {
+        throw new ConflictError({ message: "User already has this role" })
+    }
+
+    const result = await updateUserRole(userId, newRole)
+
+    if(!result.status) {
+        throw new NotFoundError({ message: "User not found" })
+    }
+
+    global.Logger.log({
+        type: "update_role",
+        message: `User ${profile.nick_name} updated role for user ${userId}`,
+        data: {
+            user: profile._id,
+            updated_user: new Mongoose.Types.ObjectId(userId),
+            new_role: newRole
+        }
+    })
+
+    return {
+        status: true,
+        message: "User role updated successfully",
+        data: {
+            user: result.data
+        }
+    }
+}
+
 module.exports = {
     getUsers,
     getUserByNickName,
     follow,
-    unfollow
+    unfollow,
+    updateRole
 }

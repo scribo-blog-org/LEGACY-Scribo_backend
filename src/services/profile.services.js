@@ -2,6 +2,8 @@ const { get_jwt_token } = require('./auth/utils/jwt')
 const { getUserByQuery } = require('../db/users.db')
 const { readNotificationsByUserId, updateProfileById } = require('../db/profile')
 const { deleteFile, uploadImage } = require('./aws.services');
+const rolePermissions = require('../authorization/rolePermissions');
+const roleManagement = require('../authorization/roleManagement');
 const UnAuthorizedError = require('../errors/UnAuthorizedError');
 const ConflictError = require('../errors/ConflictError')
 
@@ -12,10 +14,19 @@ async function getProfile(id) {
         throw new UnAuthorizedError()
     }
 
+    let data = {
+        ...user.data,
+        permissions: rolePermissions[user.data.role] ?? [],
+    } 
+
+    if(roleManagement[user.data.role]) {
+        data.role_management = roleManagement[user.data.role]
+    }
+
     return {
         status: true,
         message: "Success authorized",
-        data: user.data
+        data: data
     }
 }
 
@@ -42,11 +53,19 @@ async function updateProfile(profile, data) {
     }
 
     const result = await updateProfileById(profile._id, data)
+    let result_data = {
+        ...result.data,
+        permissions: rolePermissions[user.data.role] ?? [],
+    }
+
+    if(roleManagement[user.data.role]) {
+        result_data.role_management = roleManagement[user.data.role]
+    }
 
     return {
         status: true,
         message: "Success updated profile",
-        data: result.data
+        data: result_data
     }
 }
 

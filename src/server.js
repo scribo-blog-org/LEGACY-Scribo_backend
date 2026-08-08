@@ -1,9 +1,19 @@
+const dns = require("node:dns");
+
+dns.setServers([
+    "1.1.1.1",
+    "1.0.0.1"
+]);
+
 const cors = require('cors')
 const express = require('express')
 const mongoose = require('mongoose')
+
 const app = express()
 require('dotenv').config()
+
 const Logger = require('./services/log')
+
 const { awsConfigure } = require('./services/aws.services')
 const { errorMiddleware } = require('./middlewares/error.middleware');
 
@@ -56,10 +66,11 @@ const start = async () => {
         await awsConfigure()
         console.log("Global logger is initialized\n")
         await mongoose.connect(`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.lccalb5.mongodb.net/?retryWrites=true&w=majority`)
+        console.log("MongoDB is connected\n")
         app.listen(port, () => {} )
     }
     catch (e) { 
-        console.log()
+        console.log(e.message)
         process.exit(1)
     }
 }

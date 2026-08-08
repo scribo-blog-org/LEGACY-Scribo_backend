@@ -4,7 +4,8 @@ const router = Router()
 const {
     getUserByNickNameSchema,
     getUsersSchema,
-    followSchema
+    followSchema,
+    updateRoleSchema
 } = require("../middlewares/validation/schemes")
 
 const validateMiddleware = require('../middlewares/validation/validate.middleware')
@@ -14,6 +15,7 @@ const getUserByNickNameController = require("../controllers/users/getUserByNickN
 const getUsersController = require("../controllers/users/getUsers.controller")
 const followController = require("../controllers/users/follow.controller")
 const unfollowController = require("../controllers/users/unfollow.controller")
+const updateRoleController = require("../controllers/users/updateRole.controller")
 
 router.get(
     '/:nick_name',
@@ -39,6 +41,13 @@ router.delete(
     authMiddleware,
     validateMiddleware(followSchema),
     unfollowController
+)
+
+router.patch(
+    '/:id/role',
+    authMiddleware,
+    validateMiddleware(updateRoleSchema),
+    updateRoleController
 )
 
 module.exports = router
