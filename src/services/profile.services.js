@@ -38,6 +38,7 @@ async function updateProfile(profile, data) {
             throw new ConflictError({ message: "Nick name is already used by another user!" })
         }
     }
+
     if(Object.keys(data).includes("avatar")) {
         if(profile.avatar) {
             await deleteFile(profile.avatar)
@@ -53,13 +54,14 @@ async function updateProfile(profile, data) {
     }
 
     const result = await updateProfileById(profile._id, data)
+
     let result_data = {
         ...result.data,
-        permissions: rolePermissions[user.data.role] ?? [],
+        permissions: rolePermissions[result.data.role] ?? [],
     }
 
-    if(roleManagement[user.data.role]) {
-        result_data.role_management = roleManagement[user.data.role]
+    if(roleManagement[result.data.role]) {
+        result_data.role_management = roleManagement[result.data.role]
     }
 
     return {
