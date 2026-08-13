@@ -138,6 +138,7 @@ async function updateProfileById(user_id, update_fields) {
     const user = await getUserByQuery({ "_id": user_id })
     
     if(!user.status) return user
+    
     const result = await User.findOneAndUpdate(
         { _id: user_id },
         { $set: update_fields },
