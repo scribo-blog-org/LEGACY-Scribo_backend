@@ -24,7 +24,10 @@ async function getUserByNickName(nickName, options = {}) {
 async function getUsers(params){
     const allowed = ["nick_name", "email", "role", "is_verified"]
 
-    const validParams = Object.keys(params).filter(key => allowed.includes(key))
+    const validParams = Object.fromEntries(
+        Object.entries(params)
+            .filter(([key]) => allowed.includes(key))
+    )
 
     let users = await getUsersByQuery(validParams)
 

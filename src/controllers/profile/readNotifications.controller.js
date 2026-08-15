@@ -5,7 +5,7 @@ const readNotificationsController = async (req, res, next) => {
         const result = await readNotificationsService({ profile: req.profile })
 
         res.status(200).json({
-            success: true,
+            status: true,
             message: "Notifications read successfully",
             data: result
         })

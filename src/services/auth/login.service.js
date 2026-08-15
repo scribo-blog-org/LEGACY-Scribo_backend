@@ -29,7 +29,7 @@ async function loginByGoogle(google_token) {
         })
     }
 
-    const user = await getUserByQuery({ email: result.email })
+    const user = await getUserByQuery({ email: result })
 
     if(!user) 
     {

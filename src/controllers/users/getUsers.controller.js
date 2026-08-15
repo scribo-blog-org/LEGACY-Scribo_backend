@@ -5,7 +5,7 @@ const getUsersController = async (req, res, next) => {
         const users = await getUsers(req.query)
 
         res.status(200).json({
-            success: true,
+            status: true,
             message: "Users retrieved successfully",
             data: users
         })

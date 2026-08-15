@@ -2,12 +2,10 @@ const { getProfile } = require('../../services/profile.services')
 
 const getProfileController = async (req, res, next) => {
     try {
-        const result = await getProfile(req.profile._id)
-        
         res.status(200).json({
-            success: true,
+            status: true,
             message: "Profile fetched successfully",
-            data: result
+            data: req.profile
         })
     }
     catch(error) {

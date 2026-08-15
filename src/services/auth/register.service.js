@@ -10,7 +10,7 @@ const { confirmEmailCode } = require("./verification.service")
 
 const { deleteVerificationCode } = require("../../db/email")
 const { getUserByQuery, createNewUser } = require('../../db/users.db')
-const { updateProfileById } = require("../../db/profile")
+const { editProfileById } = require("../../db/profile")
 
 async function register({
     nickName,
@@ -62,7 +62,7 @@ async function register({
 
     delete newUser.password
 
-    await updateProfileById(
+    await editProfileById(
         newUser._id,
         {
             avatar: img
@@ -113,7 +113,7 @@ async function registerByGoogle({
         description: description,
         password: password,
         avatar: avatar,
-        email: result.email
+        email: result
     })
 }
 
