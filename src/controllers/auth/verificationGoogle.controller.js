@@ -2,7 +2,7 @@ const { verifyGoogleToken } = require("../../services/auth/verification.service"
 
 const verificationGoogleController = async (req, res, next) => {
     try {
-        const result = await verifyGoogleToken({ google_token: req.body.google_token })
+        const result = await verifyGoogleToken(req.body.google_token)
 
         res.status(200).json({
             status: true,

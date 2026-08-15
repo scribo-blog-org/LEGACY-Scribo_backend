@@ -5,7 +5,7 @@ const getUserByNickNameController = async (req, res, next) => {
         const user = await getUserByNickName(req.params["nick_name"])
 
         res.status(200).json({
-            success: true,
+            status: true,
             message: "User found successfully",
             data: user
         })

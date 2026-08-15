@@ -8,7 +8,7 @@ const { createVerificationCode, getVerificationCode } = require("../../db/email"
 
 async function verifyGoogleToken(google_token) {
     const email = await getEmailByGoogleToken(google_token)
-
+    
     if(!email) {
         throw new BadRequestError({
             errors: {
@@ -22,10 +22,10 @@ async function verifyGoogleToken(google_token) {
         })
     }
 
-    const user = await getUserByQuery({ email: email.email })
-
+    const user = await getUserByQuery({ email: email })
+    
     return {
-        email: email.email,
+        email: email,
         is_registered: !!user
     }
 }

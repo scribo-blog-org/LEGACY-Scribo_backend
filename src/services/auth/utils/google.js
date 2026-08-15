@@ -16,7 +16,8 @@ async function getEmailByGoogleToken(google_token) {
         return null
     }
 
-    const userEmail = (await google_result.json()).email
+    const google_data = await google_result.json()
+    const userEmail = google_data.email
 
     return userEmail
 }
