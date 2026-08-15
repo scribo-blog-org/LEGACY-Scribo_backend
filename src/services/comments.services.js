@@ -1,9 +1,11 @@
 const NotFoundError = require('../errors/NotFoundError');
 const ConflictError = require('../errors/ConflictError');
+const AppError = require('../errors/AppError');
 
 const { addCommentToPost,
     addReplyToComment,
     getCommentsByPostId,
+    getCommentsByPostIds,
     getCommentsByQuery,
     deleteCommentById,
     getCommentById,
@@ -13,240 +15,262 @@ const { addCommentToPost,
     removeLikeFromComment
     } = require('../db/comments')
 const { getPostByQuery } = require('../db/posts')
-const { getUserByQuery } = require('../db/users.db')
+const { getUserByQuery, getUsersByIds } = require('../db/users.db')
 const { addNotificationToUserById, removeNotification } = require('../db/profile')
 
 async function commentPost(post_id, comment_text, parent_comment_id, profile) {
-    if(!post_id || !comment_text || !profile) {
-        throw new AppError({ message: "Missing required fields!" })
-    }
-    
-    let result
+    const post = await getPostByQuery({ _id: post_id })
 
-    
-    if(parent_comment_id) {
-        result = await addReplyToComment(parent_comment_id, comment_text, profile._id)
-        
-        if(result.status !== true) { 
-            throw new NotFoundError({ message: result.message })
-        }
-
-        const comment_author = (await getCommentsByQuery({ _id: parent_comment_id })).data[0].author
-        
-        if(comment_author.toString() !== profile._id.toString()) {
-            const res = await addNotificationToUserById(comment_author, { type: "reply_comment", user: profile._id, comment: result.data._id, post: post_id })
-        }
-    }
-
-    else {
-        result = await addCommentToPost(post_id, comment_text, profile._id)
-        
-        const post_author = (await getPostByQuery({ _id: post_id })).data.author
-        
-        if(post_author.toString() !== profile._id.toString()) {
-            await addNotificationToUserById(post_author, { type: "comment_post", user: profile._id, post: post_id, comment: result.data._id })
-        }
-    }
-
-    if(!result.status) {
-        throw new NotFoundError({ message: result.message })
-    }
-
-
-    return {
-        status: true,
-        message: "Success commented post",
-        data: result.data
-    }
-}
-
-async function getComments(post_id, expand) {
-    const post = await getPostByQuery({ "_id": post_id })
-
-    if(!post.status) {
+    if (!post) {
         throw new NotFoundError({ message: "Post not found!" })
     }
 
-    let post_comments = await getCommentsByPostId(post_id)
+    let result
 
-    if(!post_comments.status) {
-        throw new NotFoundError({ message: post_comments.message })
-    }
+    if (parent_comment_id) {
+        const parentComment = await getCommentById(parent_comment_id)
 
-    let data = []
+        if (!parentComment) {
+            throw new NotFoundError({ message: "Parent comment not found!" })
+        }
 
-    for (const comment of post_comments.data) {
-        data.push({
-            ...comment.toObject(),
-            replies: await get_replies(comment._id, expand)
-        });
-        if(expand === "author") {
-            const author = await getUserByQuery({ '_id': comment.author })
-            if(author.status) {
-                data[data.length - 1].author = {
-                    _id: author.data._id,
-                    nick_name: author.data.nick_name,
-                    avatar: author.data.avatar,
-                    is_verified: author.data.is_verified
+        if (parentComment.post_id.toString() !== post_id.toString()) {
+            throw new ConflictError({
+                message: "Parent comment does not belong to this post!"
+            })
+        }
+
+        result = await addReplyToComment(
+            post_id,
+            parent_comment_id,
+            comment_text,
+            profile._id
+        )
+
+        const comment_author = parentComment.author
+
+        if (comment_author.toString() !== profile._id.toString()) {
+            await addNotificationToUserById(
+                comment_author,
+                {
+                    type: "reply_comment",
+                    user: profile._id,
+                    comment: result._id,
+                    post: post_id
                 }
-            }
+            )
+        }
+    }
+    else {
+        result = await addCommentToPost(
+            post_id,
+            comment_text,
+            profile._id
+        )
+
+        const post_author = post.author
+
+        if (post_author.toString() !== profile._id.toString()) {
+            await addNotificationToUserById(
+                post_author,
+                {
+                    type: "comment_post",
+                    user: profile._id,
+                    post: post_id,
+                    comment: result._id
+                }
+            )
         }
     }
 
-    return {
-        status: true,
-        message: "Success fetched comments",
-        data: data
-    }
+    return result
 }
 
-async function get_replies(comment_id, expand) {
-    const comment_replies = await getCommentsByQuery({
-        parent_comment_id: comment_id
-    });
-    
-    if(!comment_replies.status) {
-        return [];
+async function getComments(post_id, expand) {
+    const post = await getPostByQuery({ _id: post_id })
+
+    if (!post) {
+        throw new NotFoundError({
+            message: "Post not found!"
+        })
     }
 
-    const replies = comment_replies.data;
+    const comments = await getCommentsByPostId(post_id)
 
-    for (const comment of replies) {
-        if(expand === "author") {
-            const author = await getUserByQuery({ '_id': comment.author })
-            if(author.status) {
-                comment.author = {
-                    _id: author.data._id,
-                    nick_name: author.data.nick_name,
-                    avatar: author.data.avatar,
-                    is_verified: author.data.is_verified
+    if (expand === "author") {
+        const authorIds = [
+            ...new Set(
+                comments.map(comment => comment.author.toString())
+            )
+        ]
+
+        const authors = await getUsersByIds(authorIds)
+
+        const authorMap = new Map(
+            authors.map(author => [
+                author._id.toString(),
+                {
+                    _id: author._id,
+                    nick_name: author.nick_name,
+                    avatar: author.avatar,
+                    is_verified: author.is_verified
                 }
-            }
+            ])
+        )
+
+        for (const comment of comments) {
+            comment.author = authorMap.get(
+                comment.author.toString()
+            ) || null
         }
-        comment.replies = await get_replies(comment._id, expand);
     }
 
-    return replies;
+    return buildCommentsTree(comments)
+}
+
+function buildCommentsTree(comments) {
+    const commentMap = new Map()
+    const roots = []
+
+    for (const comment of comments) {
+        comment.replies = []
+        commentMap.set(comment._id.toString(), comment)
+    }
+
+    for (const comment of comments) {
+        if (!comment.parent_comment_id) {
+            roots.push(comment)
+            continue
+        }
+
+        const parent = commentMap.get(
+            comment.parent_comment_id.toString()
+        )
+
+        if (parent) {
+            parent.replies.push(comment)
+        }
+    }
+
+    return roots
 }
 
 async function deleteComment(comment_id) {
-    const root_comment = await getCommentById(comment_id)
+    const rootComment = await getCommentById(comment_id)
 
-    if(!root_comment.status) {
-        throw new NotFoundError({ message: root_comment.message })
+    if (!rootComment) {
+        throw new NotFoundError({
+            message: "Comment not found!"
+        })
     }
-    
-    const replies = await get_replies(comment_id, null)
-    const comments_to_delete = flattenComments(replies)
-    comments_to_delete.push(root_comment.data)
 
-    const result = await deleteCommentsByIds(comments_to_delete)
-    const post_id = root_comment.data.post_id
+    const comments = await getCommentsByPostId(rootComment.post_id)
+
+    const commentIds = getCommentIdsToDelete(
+        comments,
+        rootComment._id
+    )
+
+    const result = await deleteCommentsByIds(commentIds)
 
     await removeNotification({
         comment: {
-            $in: comments_to_delete.map(comment => comment._id)
+            $in: commentIds
         }
-    });
+    })
 
-    return {
-        status: true,
-        message: "Success deleted comment",
-        data: null
-    }
+    return result
 }
 
-function flattenComments(comments) {
-    const result = [];
+function getCommentIdsToDelete(comments, rootCommentId) {
+    const childrenMap = new Map()
 
-    function walk(items) {
-        for (const comment of items) {
-            result.push(comment);
+    for (const comment of comments) {
+        if (!comment.parent_comment_id) {
+            continue
+        }
 
-            if (comment.replies?.length) {
-                walk(comment.replies);
-            }
+        const parentId = comment.parent_comment_id.toString()
+
+        if (!childrenMap.has(parentId)) {
+            childrenMap.set(parentId, [])
+        }
+
+        childrenMap.get(parentId).push(comment._id)
+    }
+
+    const result = [rootCommentId]
+    const queue = [rootCommentId.toString()]
+
+    while (queue.length > 0) {
+        const parentId = queue.shift()
+
+        const children = childrenMap.get(parentId) || []
+
+        for (const childId of children) {
+            result.push(childId)
+            queue.push(childId.toString())
         }
     }
 
-    walk(comments);
-
-    return result;
+    return result
 }
 
 async function editComment(comment_id, comment_text) {
     const comment = await getCommentById(comment_id)
 
-    if(!comment.status) {
+    if(!comment) {
         throw new NotFoundError({ message: comment.message })
     }
 
     const result = await updateCommentById(comment_id, comment_text)
 
-    if(!result.status) {
-        throw new NotFoundError({ message: result.message })
-    }
+    return result
+}
 
-    return {
-        status: true,
-        message: "Success updated comment",
-        data: result.data
-    }
+async function getCommentsForPosts(post_ids) {
+    const comments = await getCommentsByPostIds(post_ids)
+
+    return buildCommentsTreesByPost(comments)
 }
 
 async function likeComment(comment_id, profile) {
     const comment = await getCommentById(comment_id)
 
-    if(!comment.status) {
+    if(!comment) {
         throw new NotFoundError({ message: comment.message })
     }
 
-    if(comment.data.likes.some(id => id.equals(profile._id))) {
+    if(comment.likes.some(id => id.equals(profile._id))) {
         throw new ConflictError({ message: "You have already liked this comment!" })
     }
 
     const result = await addLikeToComment(comment_id, profile._id)
 
-    if(!result.status) {
-        throw new NotFoundError({ message: result.message })
-    }
-
-    return {
-        status: true,
-        message: "Success liked comment",
-        data: result.data
-    }
+    return result
 }
 
 async function unlikeComment(comment_id, profile) {
     const comment = await getCommentById(comment_id)
 
-    if(!comment.status) {
+    if(!comment) {
         throw new NotFoundError({ message: comment.message })
     }
 
-    if(!comment.data.likes.some(id => id.equals(profile._id))) {
+    if(!comment.likes.some(id => id.equals(profile._id))) {
         throw new ConflictError({ message: "You have not liked this comment!" })
     }
 
     const result = await removeLikeFromComment(comment_id, profile._id)
 
-    if(!result.status) {
-        throw new NotFoundError({ message: result.message })
-    }
-
-    return {
-        status: true,
-        message: "Success unliked comment",
-        data: result.data
-    }
+    return result
 }
 
 module.exports = {
     commentPost,
     getComments,
+    getCommentsForPosts,
     deleteComment,
-    flattenComments,
     editComment,
     likeComment,
     unlikeComment

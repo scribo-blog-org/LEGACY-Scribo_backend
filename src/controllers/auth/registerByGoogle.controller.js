@@ -10,7 +10,11 @@ const registerByGoogleController = async (req, res, next) => {
             googleToken: req.body.google_token
         })
         
-        res.status(200).json(googleResult)
+        res.status(200).json({
+            status: true,
+            message: "Register by Google successful",
+            data: googleResult
+        })
     }
     catch(err) {
         next(err)

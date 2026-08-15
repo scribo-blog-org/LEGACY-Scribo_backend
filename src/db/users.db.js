@@ -1,3 +1,4 @@
+const { ObjectId } = require('mongoose').Types
 const User = require('../models/User')
 
 async function getUsersByQuery(query = {}, options = { }) {
@@ -7,39 +8,70 @@ async function getUsersByQuery(query = {}, options = { }) {
         with_notifications: false,
         ...options,
     };
-    let users = await User.find(query)
 
-    if(users.length === 0) {
-        return {
-            status: false,
-            message: 'Users not found',
-            data: null
-        }
-    }
+    let users = await User.find(query).lean()
 
     users = users.map(user => {
-        const userObj = user.toObject();
 
         if (!options.with_password) {
-            delete userObj.password;
+            delete user.password;
         }
 
         if (!options.with_saved_posts) {
-            delete userObj.saved_posts;
+            delete user.saved_posts;
         }
 
         if (!options.with_notifications) {
-            delete userObj.notifications;
+            delete user.notifications;
         }
 
-        return userObj;
+        return user;
     })
 
-    return {
-        status: true,
-        message: 'Success',
-        data: users
+    return users
+}
+
+async function getUsersByIds(userIds = [], options = { }) {
+    options = {
+        with_password: false,
+        with_saved_posts: true,
+        with_notifications: false,
+        ...options,
+    };
+
+    const users = await User.find({ _id: { $in: userIds.map(id => new ObjectId(id)) } }).lean()
+
+    return users.map(user => {
+        if (!options.with_password) {
+            delete user.password;
+        }
+        if (!options.with_saved_posts) {
+            delete user.saved_posts;
+        }
+        if (!options.with_notifications) {
+            delete user.notifications;
+        }
+        return user;
+    })
+}
+
+async function getUserById(id, options = { }) {
+    options = {
+        with_password: false,
+        with_saved_posts: true,
+        with_notifications: false,
+        ...options,
+    };
+
+    let user = await User.findById(id).lean()
+
+    if(user) {
+        if(options.with_password === false) delete user.password
+        if(options.with_saved_posts === false) delete user.saved_posts
+        if(options.with_notifications === false) delete user.notifications
     }
+
+    return user
 }
 
 async function getUserByQuery(query = {}, options = { }) {
@@ -50,89 +82,42 @@ async function getUserByQuery(query = {}, options = { }) {
         ...options,
     };
 
-    let user = await User.findOne(query)
+    let user = await User.findOne(query).lean()
 
-    if(!user) {
-        return {
-            status: false,
-            message: 'User not found',
-            data: null
-        }
+    if(user) {
+        if(options.with_password === false) delete user.password
+        if(options.with_saved_posts === false) delete user.saved_posts
+        if(options.with_notifications === false) delete user.notifications
     }
 
-    const userObj = user.toObject();
-    if(options.with_password === false) delete userObj.password
-    if(options.with_saved_posts === false) delete userObj.saved_posts
-    if(options.with_notifications === false) delete userObj.notifications
-
-    return {
-        status: true,
-        message: 'Success',
-        data: userObj
-    }
+    return user
 }
 
-async function followToUserById(follower_id, followed_id) {
-    const follower = await User.findOneAndUpdate(
-        { _id: follower_id },
+async function addFollowerToUser(follower_id, followed_id) {
+    return User.findByIdAndUpdate(
+        followed_id,
         {
-            $push: {
-                follows: followed_id
-            }
-        },
-        { new: true }
-    );
-    if(!follower) {
-        return {
-            status: false,
-            message: "Follower not found",
-            data: null
-        }
-    }
-    const followed = await User.findOneAndUpdate(
-        { _id: followed_id },
-        {
-            $push: {
+            $addToSet: {
                 followers: follower_id
             }
         },
         { new: true }
-    );
-    if(!followed) {
-        return {
-            status: false,
-            message: "Followed not found",
-            data: null
-        }
-    }
-
-    return {
-        status: true,
-        message: "Success followed",
-        data: {
-            follower: follower,
-            followed: followed
-        }
-    }
+    ).lean()
 }
 
-async function unfollowToUserById(follower_id, followed_id) {
-    const follower = await User.findOneAndUpdate(
-        { _id: follower_id },
+async function addFollowToUser(follower_id, followed_id) {
+    return User.findByIdAndUpdate(
+        follower_id,
         {
-            $pull: {
+            $addToSet: {
                 follows: followed_id
             }
         },
         { new: true }
-    );
-    if(!follower) {
-        return {
-            status: false,
-            message: "Follower not found!",
-            data: null
-        }
-    }
+    ).lean()
+}
+
+async function removeFollowerFromUser(follower_id, followed_id) {
     const followed = await User.findOneAndUpdate(
         { _id: followed_id },
         {
@@ -141,93 +126,57 @@ async function unfollowToUserById(follower_id, followed_id) {
             }
         },
         { new: true }
-    );
+    ).lean();
 
-    if(!followed) {
-        return {
-            status: false,
-            message: "Followed not found",
-            data: null
-        }
-    }
-
-    return {
-        status: true,
-        message: "Success",
-        data: {
-            follower: follower,
-            followed: followed
-        }
-    }
+    return followed
 }
 
-async function removePostFromSaved(user_id, post_id) {
-    const new_user = await User.findOneAndUpdate(
-        { _id: user_id },
-        { $pull: { saved_posts: new ObjectId(post_id) } },
+async function removeFollowFromUser(follower_id, followed_id) {
+    const follower = await User.findOneAndUpdate(
+        { _id: follower_id },
+        {
+            $pull: {
+                follows: followed_id
+            }
+        },
         { new: true }
-    );
-    if(!new_user) {
-        return {
-            status: false,
-            message: "User not found!",
-            data: null
-        }
-    }
+    ).lean();
 
-    return {
-        status: true,
-        message: "Success removed post from saved",
-        data: new_user
-    }
+    return follower
+}
+
+async function removePostFromSaved(userId, postId) {
+    return User.findByIdAndUpdate(
+        userId,
+        { $pull: { saved_posts: new ObjectId(postId) } },
+        { new: true }
+    ).lean()
 }
 
 async function createNewUser(user) {
-    if(!user) {
-        return {
-            status: false,
-            message: "User object is empty!",
-            data: null
-        }
-    }
-
     const newUser = new User(user)
     const savedUser = await newUser.save();
 
-    return {
-        status: true,
-        message: "Success created new account",
-        data: savedUser
-    }
+    return savedUser.toObject()
 }
 
 async function updateUserRole(userId, newRole) {
-    const updatedUser = await User.findOneAndUpdate(
-        { _id: userId },
+    return User.findByIdAndUpdate(
+        userId,
         { role: newRole },
         { new: true }
-    );
-
-    if(!updatedUser) {
-        return {
-            status: false,
-            message: "User not found!",
-            data: null
-        }
-    }
-
-    return {
-        status: true,
-        message: "Success updated user role",
-        data: updatedUser
-    }
+    ).lean()
 }
 
 module.exports = {
     getUsersByQuery,
+    getUserById,
+    getUsersByIds,
     getUserByQuery,
-    followToUserById,
-    unfollowToUserById,
+    addFollowerToUser,
+    addFollowToUser,
+    removeFollowerFromUser,
+    removeFollowFromUser,
     removePostFromSaved,
     createNewUser,
     updateUserRole

@@ -1,141 +1,54 @@
 const postComment = require('../models/PostComment')
-const Post = require('../models/Post')
 
 async function addCommentToPost(post_id, comment_text, author_id) {
-    const post = await Post.findById(post_id)
-    if(!post) {
-        return {
-            status: false,
-            message: "Post not found!",
-            data: null
-        }
-    }
-
     const newComment = await postComment.create({
-        post_id: post_id,
-        comment_text: comment_text,
+        post_id,
+        comment_text,
         author: author_id
     })
-    await newComment.save()
 
-    return {
-        status: true,
-        message: "Success added comment",
-        data: newComment
-    }
+    return newComment.toObject()
 }
 
-async function addReplyToComment(parent_comment_id, comment_text, author_id) {
-    const comment = await postComment.findById(parent_comment_id)
-
-    if(!await postComment.findById(parent_comment_id)) {
-        return {
-            status: false,
-            message: "Parent comment not found!",
-            data: null
-        }
-    }
-
+async function addReplyToComment(post_id, parent_comment_id, comment_text, author_id) {
     const newComment = await postComment.create({
+        post_id,
         comment_text: comment_text,
         author: author_id,
         parent_comment_id: parent_comment_id
     })
 
-    await newComment.save()
-
-    return {
-        status: true,
-        message: "Success added comment",
-        data: newComment
-    }
+    return newComment.toObject()
 }
 
 async function getCommentsByPostId(post_id) {
-    const comments = await postComment.find({ post_id: post_id })
-
-    return {
-        status: true,
-        message: "Success get comments",
-        data: comments
-    }
+    return postComment.find({ post_id: post_id }).lean()
 }
 
+async function getCommentsByPostIds(post_ids) {
+    return postComment.find({
+        post_id: { $in: post_ids }
+    }).lean()
+} 
+
 async function getCommentById(comment_id) {
-    const comment = await postComment.findById(comment_id).lean()
-
-    if(!comment) {
-        return {
-            status: false,
-            message: "Comment not found!",
-            data: null
-        }
-    }
-
-    return {
-        status: true,
-        message: "Success get comment",
-        data: comment
-    }
+    return postComment.findById(comment_id).lean()
 }
 
 async function getCommentsByQuery(query = {}) {
-    const posts = await postComment.find(query).lean()
-    
-    if (!posts.length) {
-        return {
-            status: false,
-            message: "There is no comments!",
-            data: null
-        }
-    }
-
-    return {
-        status: true,
-        message: "Success",
-        data: posts
-    }
+    return postComment.find(query).lean()
 }
 
 async function deleteCommentById(comment_id) {
-    const result = await postComment.deleteOne({ _id: comment_id })
-
-    if(!result.deletedCount) {
-        return {
-            status: false,
-            message: "There is no comments to delete!",
-            data: null
-        }
-    }
-
-    return {
-        status: true,
-        message: "Success deleted comments",
-        data: result
-    }
-
+    return postComment.findByIdAndDelete(comment_id).lean()
 }
 
 async function deleteCommentsByIds(comment_ids) {
-    const result = await postComment.deleteMany({ _id: { $in: comment_ids } }).lean()
-
-    if(!result.deletedCount) {
-        return {
-            status: false,
-            message: "There is no comments to delete!",
-            data: null
-        }
-    }
-    
-    return {
-        status: true,
-        message: "Success deleted comments",
-        data: null
-    }
+    return postComment.deleteMany({ _id: { $in: comment_ids } })
 }
 
 async function updateCommentById(comment_id, comment_text) {
-    const result = await postComment.findByIdAndUpdate(
+    return postComment.findByIdAndUpdate(
         comment_id,
         { comment_text },
         {
@@ -143,24 +56,10 @@ async function updateCommentById(comment_id, comment_text) {
             runValidators: true
         }
     ).lean();
-
-    if(!result) {
-        return {
-            status: false,
-            message: "Comment not found!",
-            data: null
-        }
-    }
-
-    return {
-        status: true,
-        message: "Success updated comment",
-        data: result
-    }
 }
 
 async function addLikeToComment(comment_id, profile_id) {
-    const result = await postComment.findByIdAndUpdate(
+    return postComment.findByIdAndUpdate(
         comment_id,
         { $addToSet: { likes: profile_id } },
         {
@@ -168,24 +67,10 @@ async function addLikeToComment(comment_id, profile_id) {
             runValidators: true
         }
     ).lean();
-
-    if(!result) {
-        return {
-            status: false,
-            message: "Comment not found!",
-            data: null
-        }
-    }
-
-    return {
-        status: true,
-        message: "Success liked comment",
-        data: result
-    }
 }
 
 async function removeLikeFromComment(comment_id, profile_id) {
-    const result = await postComment.findByIdAndUpdate(
+    return postComment.findByIdAndUpdate(
         comment_id,
         { $pull: { likes: profile_id } },
         {
@@ -193,26 +78,13 @@ async function removeLikeFromComment(comment_id, profile_id) {
             runValidators: true
         }
     ).lean();
-
-    if(!result) {
-        return {
-            status: false,
-            message: "Comment not found!",
-            data: null
-        }
-    }
-
-    return {
-        status: true,
-        message: "Success unliked comment",
-        data: result
-    }
 }
 
 module.exports = {
     addCommentToPost,
     addReplyToComment,
     getCommentsByPostId,
+    getCommentsByPostIds,
     getCommentsByQuery,
     deleteCommentById,
     getCommentById,

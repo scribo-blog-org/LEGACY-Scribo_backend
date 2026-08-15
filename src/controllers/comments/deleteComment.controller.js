@@ -1,10 +1,18 @@
 const { deleteComment } = require('../../services/comments.services')
 
 const deleteCommentController = async (req, res, next) => {
-    const result = await deleteComment(req.params.id)
+    try {
+        const result = await deleteComment(req.params.id)
 
-
-    res.status(200).json(result)
+        res.status(200).json({
+            status: true,
+            message: "Comment deleted successfully!",
+            data: result
+        })
+    }
+    catch(error) {
+        next(error)
+    }
 }
 
 module.exports = deleteCommentController

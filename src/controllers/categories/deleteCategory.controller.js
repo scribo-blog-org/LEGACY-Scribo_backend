@@ -3,7 +3,12 @@ const { deleteCategory } = require("../../services/categories.services.js")
 const deleteCategoryController = async (req, res, next) => {
     try {
         const result = await deleteCategory(req.params.id, req.profile)
-        return res.status(200).json(result)
+        
+        return res.status(200).json({
+            status: true,
+            message: "Category deleted successfully",
+            data: result
+        })
     }
     catch(error) {
         next(error)

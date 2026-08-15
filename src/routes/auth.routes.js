@@ -20,7 +20,7 @@ const loginByUsernameController = require('../controllers/auth/loginByUsername.c
 const registerByEmailController = require('../controllers/auth/registerByEmail.controller');
 const registerByGoogleController = require('../controllers/auth/registerByGoogle.controller');
 
-const verifitcationGoogleController = require('../controllers/auth/verifitcationGoogle.controller');
+const verificationGoogleController = require('../controllers/auth/verificationGoogle.controller');
 const verificationEmailController = require('../controllers/auth/verificationEmail.controller');
 const verificationEmailConfirmController = require('../controllers/auth/verificationEmailConfirm.controller');
 
@@ -53,7 +53,7 @@ router.post(
 router.post(
     '/verification/google', 
     validateMiddleware(verificationGoogleSchema),
-    verifitcationGoogleController
+    verificationGoogleController
 )
 
 router.post(

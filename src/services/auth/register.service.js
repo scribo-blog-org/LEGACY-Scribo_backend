@@ -23,11 +23,11 @@ async function register({
         throw new AppError({ message: "Missing some data for register" });
     }
 
-    if((await getUserByQuery({ "email": email })).status) {
+    if((await getUserByQuery({ "email": email }))) {
         throw new ConflictError({ message: "User with this email is exists" })
     }
 
-    if((await getUserByQuery({ "nick_name": nickName })).status) {
+    if((await getUserByQuery({ "nick_name": nickName }))) {
         throw new ConflictError({
             message: "User with this nick name is exists",
             errors: {
@@ -53,13 +53,12 @@ async function register({
     if(avatar) {
         upload_image_result = await uploadImage(avatar, "avatar", newUser.data._id.toString())
 
-        if(!upload_image_result.status) {
+        if(!upload_image_result) {
             throw new AppError({ message: "Error to upload avatar image" })
         }
     }
     
-    const img = upload_image_result ? upload_image_result.data.url : null
-
+    const img = upload_image_result ? upload_image_result : null
 
     delete newUser.data.password
 
@@ -80,11 +79,7 @@ async function register({
         }
     })
 
-    return {
-        status: true,
-        message: "Success registered",
-        data: newUser.data
-    }
+    return newUser
 }
 
 async function registerByGoogle({
@@ -100,7 +95,7 @@ async function registerByGoogle({
 
     const result = await getEmailByGoogleToken(googleToken)
 
-    if(!result.status) { 
+    if(!result) { 
         throw new BadRequestError({
             errors: {
                 body: {
@@ -148,10 +143,8 @@ async function registerByEmail({
         email: email
     })
 
-    if(registerResult.status) {
-        await deleteVerificationCode(email)
-        return registerResult
-    }
+    await deleteVerificationCode(email)
+    return registerResult
 }
 
 module.exports = {

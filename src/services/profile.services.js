@@ -1,6 +1,6 @@
-const { get_jwt_token } = require('./auth/utils/jwt')
+const { decode } = require('./auth/utils/jwt')
 const { getUserByQuery } = require('../db/users.db')
-const { readNotificationsByUserId, updateProfileById } = require('../db/profile')
+const { readNotificationsByUserId, editProfileById } = require('../db/profile')
 const { deleteFile, uploadImage } = require('./aws.services');
 const rolePermissions = require('../authorization/rolePermissions');
 const roleManagement = require('../authorization/roleManagement');
@@ -8,33 +8,29 @@ const UnAuthorizedError = require('../errors/UnAuthorizedError');
 const ConflictError = require('../errors/ConflictError')
 
 async function getProfile(id) {
-    const user = await getUserByQuery({ '_id': id }, { with_saved_posts: true, with_notifications: true })
+    const user = await getUserById(id, { with_saved_posts: true, with_notifications: true })
 
-    if(!user.status) {
+    if(!user) {
         throw new UnAuthorizedError()
     }
 
-    let data = {
-        ...user.data,
-        permissions: rolePermissions[user.data.role] ?? [],
+    const data = {
+        ...user,
+        permissions: rolePermissions[user.role] ?? [],
     } 
 
-    if(roleManagement[user.data.role]) {
-        data.role_management = roleManagement[user.data.role]
+    if(roleManagement[user.role]) {
+        data.role_management = roleManagement[user.role]
     }
 
-    return {
-        status: true,
-        message: "Success authorized",
-        data: data
-    }
+    return data
 }
 
-async function updateProfile(profile, data) {
+async function editProfile(profile, data) {
     if(data.nick_name) {
         const nick_owner  = await getUserByQuery({ nick_name: data.nick_name })
         
-        if(nick_owner.status && nick_owner.data._id !== String(profile._id)) {
+        if(nick_owner && nick_owner._id !== String(profile._id)) {
             throw new ConflictError({ message: "Nick name is already used by another user!" })
         }
     }
@@ -46,67 +42,58 @@ async function updateProfile(profile, data) {
 
         if(data.avatar !== undefined && data.avatar !== null) { 
             const upload_image_result = await uploadImage(data.avatar, "avatar", String(profile._id))
-            data.avatar = upload_image_result.data.url
+            if(!upload_image_result) {
+                throw new AppError({ message: "Error to upload image to storage!" })
+            }
+            data.avatar = upload_image_result
         }
         else {
             data.avatar = null
         }
     }
 
-    const result = await updateProfileById(profile._id, data)
+    const result = await editProfileById(profile._id, data)
 
     let result_data = {
-        ...result.data,
-        permissions: rolePermissions[result.data.role] ?? [],
+        ...result,
+        permissions: rolePermissions[result.role] ?? [],
     }
 
-    if(roleManagement[result.data.role]) {
-        result_data.role_management = roleManagement[result.data.role]
+    if(roleManagement[result.role]) {
+        result_data.role_management = roleManagement[result.role]
     }
 
-    return {
-        status: true,
-        message: "Success updated profile",
-        data: result_data
-    }
+    return result_data
 }
 
 async function readNotifications(profile) {
-    const user = await getUserByQuery({ '_id': profile._id }, { with_notifications: true })
+    const user = await getUserById(profile._id, { with_notifications: true })
     
-    if(!user.status) {
+    if(!user) {
         throw new UnAuthorizedError()
     }
 
     const result = await readNotificationsByUserId(profile._id)
 
     return {
-        status: true,
-        message: "Success readed all notifications",
-        data: { 
-            notifications: result.data.notifications
-        }
+        notifications: result.notifications
     }
 }     
 
 async function getAuthProfile(token) {
-    const user_id = get_jwt_token(token).data
-    const user = await getUserByQuery({ '_id': user_id })
+    const user_id = decode(token)
+    const user = await getUserById(user_id, { with_notifications: true })
 
-    if(!user.status) {
+    if(!user) {
         throw new UnAuthorizedError()
     }
 
-    return {
-        status: true,
-        message: "Success authorized",
-        data: user.data
-    }
+    return user
 }
 
 module.exports = {
     getProfile,
-    updateProfile,
+    editProfile,
     readNotifications,
     getAuthProfile
 }

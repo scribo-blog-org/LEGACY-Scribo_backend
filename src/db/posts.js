@@ -1,39 +1,15 @@
 const Post = require('../models/Post')
 
-async function getPostsByQuery(query = {}) {
-    const posts = await Post.find(query).lean()
-    
-    if (!posts.length) {
-        return {
-            status: false,
-            message: "There is no posts",
-            data: null
-        }
-    }
+async function getPostById(id) {
+    return Post.findById(id).lean()
+}
 
-    return {
-        status: true,
-        message: "Success",
-        data: posts
-    }
+async function getPostsByQuery(query = {}) {
+    return Post.find(query).lean()
 }
 
 async function getPostByQuery(query = {}) {
-    const post = await Post.findOne(query).lean()
-    
-    if (!post) {
-        return {
-            status: false,
-            message: "Post not found!",
-            data: null
-        }
-    }
-
-    return {
-        status: true,
-        message: "Success",
-        data: post
-    }
+    return Post.findOne(query).lean()
 }
 
 async function createNewPost(title, content_text, category, author, featured_image=null) {
@@ -45,94 +21,35 @@ async function createNewPost(title, content_text, category, author, featured_ima
         category: category
     })
 
-    return {
-        status: true,
-        message: "Success created post",
-        data: new_post
-    }
+    return new_post.toObject()
 }
 
 async function updatePostById(id, data) {
-    const updated_post = await Post.findByIdAndUpdate(id, data, { new: true })
-
-    if(!updated_post) {
-        return {
-            status: false,
-            message: "Post not found!",
-            data: null
-        }
-    }
-
-    return {
-        status: true,
-        message: "Success updated post",
-        data: updated_post
-    }
+    return Post.findByIdAndUpdate(id, data, { new: true }).lean()
 }
 
 async function deletePostById(id) {
-    const deleted_post = await Post.findByIdAndDelete(id);
-
-    if(!deleted_post) {
-        return {
-            status: false,
-            message: "This post doesn`t exists",
-            data: null
-        }
-    }
-    
-    return {
-        status: true,
-        message: "Success deleted post",
-        data: deleted_post
-    }
+    return Post.findByIdAndDelete(id).lean();
 }
 
 async function doLikeToPost(user_id, post_id) {
-    const result = await Post.findOneAndUpdate(
-        { _id: post_id },
-        { $push: { likes: user_id }},
+    return Post.findByIdAndUpdate(
+        post_id,
+        { $addToSet: { likes: user_id } },
         { new: true }
-    );
-
-    if(!result) {
-        return {
-            status: false,
-            message: "This post doesn`t exists",
-            data: null
-        }
-    }
-
-    return {
-        status: true,
-        message: "Success liked post",
-        data: result
-    }
+    ).lean()
 }
 
 async function doUnlikePost(user_id, post_id) {
-    const result = await Post.findOneAndUpdate(
-        { _id: post_id },
-        { $pull: { likes: user_id }},
+    return Post.findByIdAndUpdate(
+        post_id,
+        { $pull: { likes: user_id } },
         { new: true }
-    );
-
-    if(!result) {
-        return {
-            status: false,
-            message: "This post doesn`t exists",
-            data: null
-        }
-    }
-
-    return {
-        status: true,
-        message: "Success unliked post",
-        data: result
-    }
+    ).lean()
 }
 
 module.exports = {
+    getPostById,
     getPostsByQuery,
     getPostByQuery,
     createNewPost,

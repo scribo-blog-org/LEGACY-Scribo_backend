@@ -28,9 +28,14 @@ const editProfileController = async(req, res, next) => {
         if (data.is_saved_posts_public !== undefined) {
             data.is_saved_posts_public = String(data.is_saved_posts_public).toLowerCase() === 'true';
         }
+
         const result = await editProfile({ profile: req.profile, data })
 
-        res.status(200).json(result)
+        res.status(200).json({
+            status: true,
+            message: 'Profile updated successfully',
+            data: result
+        })
     }
     catch(error) {
         next(error)
