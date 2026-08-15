@@ -10,7 +10,6 @@ const {
     getPostsSchema,
     commentsSchema,
     likePostSchema,
-    deleteCommentSchema
 } = require('../middlewares/validation/schemes')
 
 const uploadMiddleware = require('../middlewares/upload.middleware')

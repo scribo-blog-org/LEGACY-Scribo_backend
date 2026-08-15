@@ -1,9 +1,8 @@
-const { getCategoryById } = require('../../db/category');
-const ForbiddenError  = require('../../errors/ForbiddenError');
 const { hasPermissions } = require('../roleChecks');
+
 const PERMISSIONS = require('../permissions');
 
-const NotFoundError = require('../../errors/NotFoundError');
+const ForbiddenError  = require('../../errors/ForbiddenError');
 
 const canCreate = async (req, res, next) => {
     try {

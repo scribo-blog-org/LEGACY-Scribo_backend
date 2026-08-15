@@ -13,7 +13,6 @@ const {
 } = require('../middlewares/validation/schemes')
 
 const validateMiddleware = require('../middlewares/validation/validate.middleware')
-const authMiddleware = require('../middlewares/auth.middleware')
 
 const loginByGoogleController = require('../controllers/auth/loginByGoogle.controller');
 const loginByUsernameController = require('../controllers/auth/loginByUsername.controller');

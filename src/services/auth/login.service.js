@@ -13,9 +13,10 @@ async function loginByGoogle(google_token) {
     if(!google_token) {
         throw new AppError({ message: "Google token is required for this operation" })
     }
+
     const result = await getEmailByGoogleToken(google_token)
 
-    if(!result.status) {
+    if(!result) {
         throw new BadRequestError({
             errors: {
                 body: {
@@ -30,24 +31,17 @@ async function loginByGoogle(google_token) {
 
     const user = await getUserByQuery({ email: result.email })
 
-    if(!user.status) 
+    if(!user) 
     {
         throw new NotFoundError({ message: "User with this email is not found" })
     }
 
     return {
-        status: true,
-        message: "Authorized",
-        data: {
-            token: encode(user.data._id)
-        }
+        token: encode(user._id)
     }
 }
 
 async function loginByUserName({ userName, password }) {
-    if(!userName || !password) {
-        throw new AppError({ message: "User name and password are required for this operation" })
-    }
     const user = await getUserByQuery({
         $or: [
             { email: userName },
@@ -55,20 +49,16 @@ async function loginByUserName({ userName, password }) {
         ]
     }, { with_password: true });
 
-    if(!user.status) {
+    if(!user) {
         throw new NotFoundError({ message: "User with this email or nick name is not found" })
     }
 
-    if(!await comparePassword(password, user.data.password)) {
+    if(!await comparePassword(password, user.password)) {
         throw new UnAuthorizedError({ message: "Invalid password or login" })
     }
 
     return {
-        status: true,
-        message: "Authorized",
-        data: {
-            token: encode(user.data._id)
-        }
+        token: encode(user._id)
     }
 }
 

@@ -1,11 +1,16 @@
 const { decode } = require('./auth/utils/jwt')
-const { getUserByQuery } = require('../db/users.db')
+
+const { getUserByQuery, getUserById } = require('../db/users.db')
 const { readNotificationsByUserId, editProfileById } = require('../db/profile')
+
 const { deleteFile, uploadImage } = require('./aws.services');
+
 const rolePermissions = require('../authorization/rolePermissions');
 const roleManagement = require('../authorization/roleManagement');
+
 const UnAuthorizedError = require('../errors/UnAuthorizedError');
 const ConflictError = require('../errors/ConflictError')
+const AppError = require('../errors/AppError')
 
 async function getProfile(id) {
     const user = await getUserById(id, { with_saved_posts: true, with_notifications: true })

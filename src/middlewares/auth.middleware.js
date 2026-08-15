@@ -17,11 +17,11 @@ const authMiddleware = async (req, res, next) => {
     
         const profile = await getAuthProfile(token)
         
-        if (!profile.status) {
+        if (!profile) {
             return next(new UnauthorizedError());
         }
         
-        req.profile = (await getProfile(profile.data._id)).data;
+        req.profile = (await getProfile(profile._id))
 
         next();
     }

@@ -59,7 +59,7 @@ function validate(fields) {
                 try{
                     const token_result = decode(field.value)
                     
-                    if(!token_result.status) {
+                    if(!token_result) {
                         errors = push_to_errors(errors, field.source, { type: "token", data: { message: "Incorrect token!", data: field.value }})
                         break
                     }
@@ -120,8 +120,8 @@ function validate(fields) {
                 }
                 if(field.value.length > 20) {
                     errors = push_to_errors(errors, field.source, { type: "password", data: { message: "Passowrd must be less than 21 characters!", data: field.value }})
-                    break
                 }
+                break
             case "nick_name":
                 if(!field.value || field.value.length < 3) {
                     errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Nick name must be longer than 3 characters!", data: field.value }})
@@ -206,6 +206,7 @@ function validate(fields) {
                 if(typeof field.value !== 'string' || field.value.length > 345 || !/^[A-Za-z0-9_.-]+$/.test(field.value.trim())) {
                     errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect type of google token!", data: field.value }})
                 }
+                break
             case "comment_text":
                 if(!field.value || field.value.trim().length === 0) {
                     errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Comment text must be not empty!", data: field.value }})
@@ -214,11 +215,12 @@ function validate(fields) {
                 if(field.value.length > 500) {
                     errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Comment text must be less than 500 characters!", data: field.value }})
                 }
+                break
             case "role":
                 if(!field.value || field.value.trim().length === 0) {
                     errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Role must be not empty!", data: field.value }})
-                    break
                 }
+                break
         }
     }
     return {

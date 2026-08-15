@@ -20,9 +20,9 @@ const canEdit = async (req, res, next) => {
     try {
         const post = await getPostById(req.params.id);
         
-        if(!post.status) { throw new NotFoundError(post.message) }
+        if(!post) { throw new NotFoundError(post.message) }
 
-        if(post.data.author.toString() === req.profile._id.toString()) { return next() }
+        if(post.author.toString() === req.profile._id.toString()) { return next() }
 
         if(hasPermissions(req.profile, PERMISSIONS.EDIT_ANY_POST)) { return next() }
 
@@ -36,9 +36,9 @@ const canDelete = async (req, res, next) => {
     try {
         const post = await getPostById(req.params.id);
         
-        if(!post.status) { throw new NotFoundError(post.message) }
+        if(!post) { throw new NotFoundError(post.message) }
 
-        if(post.data.author.toString() === req.profile._id.toString()) { return next() }
+        if(post.author.toString() === req.profile._id.toString()) { return next() }
 
         if(hasPermissions(req.profile, PERMISSIONS.DELETE_ANY_POST)) { return next() }
 

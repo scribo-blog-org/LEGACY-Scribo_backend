@@ -51,7 +51,7 @@ async function register({
     })
 
     if(avatar) {
-        upload_image_result = await uploadImage(avatar, "avatar", newUser.data._id.toString())
+        upload_image_result = await uploadImage(avatar, "avatar", newUser._id.toString())
 
         if(!upload_image_result) {
             throw new AppError({ message: "Error to upload avatar image" })
@@ -60,22 +60,22 @@ async function register({
     
     const img = upload_image_result ? upload_image_result : null
 
-    delete newUser.data.password
+    delete newUser.password
 
     await updateProfileById(
-        newUser.data._id,
+        newUser._id,
         {
             avatar: img
         }
     );
 
-    newUser.data.avatar = img;
+    newUser.avatar = img;
 
     global.Logger.log({
         type: "register",
-        message: `User ${newUser.data.nick_name} has registered`,
+        message: `User ${newUser.nick_name} has registered`,
         data: {
-            user: newUser.data._id
+            user: newUser._id
         }
     })
 

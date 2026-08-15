@@ -1,4 +1,4 @@
-function errorMiddleware(err, req, res, next) {
+function errorMiddleware(err, req, res, _next) {
     if (!err.isOperational) {
         console.error(err);
         
