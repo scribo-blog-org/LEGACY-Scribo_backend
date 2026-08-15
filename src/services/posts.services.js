@@ -1,24 +1,20 @@
 const { deleteFile } = require("./aws.services")
 
-const { getUserByQuery, getUsersByQuery, getUsersByIds, getUserById } = require('../db/users.db')
+const { getUsersByIds, getUserById } = require('../db/users.db')
 const { getPostById, getPostByQuery, getPostsByQuery, createNewPost, updatePostById, deletePostById, doLikeToPost, doUnlikePost } = require('../db/posts')
 const { getCategoryById, getCategoriesByIds } = require('../db/category.js')
-const { addPostToSaved, removeNotification, addNotificationToUserById, removePostFromSaved } = require('../db/profile')
-const { deleteCommentsByIds, getCommentsByPostId, getCommentsByPostIds } = require('../db/comments.js')
+const { addPostToSaved, removeNotification, addNotificationToUserById, removePostFromSaved, removePostFromSavedForUsers } = require('../db/profile')
+const { deleteCommentsByIds, getCommentsByPostId } = require('../db/comments.js')
 
-const { getCategories } = require('./categories.services.js')
-const { commentPost, getComments, deleteComment, getCommentsForPosts } = require('./comments.services.js')
+const { getComments, getCommentsForPosts } = require('./comments.services.js')
 const { uploadImage } = require('./aws.services')
 
-const { ObjectId } = require('mongodb');
 const mongoose = require('mongoose')
 
 const NotFoundError = require('../errors/NotFoundError')
 const AppError = require('../errors/AppError');
-const UnAuthorizedError = require('../errors/UnAuthorizedError');
 const ConflictError = require('../errors/ConflictError');
 const BadRequestError = require('../errors/BadRequestError');
-const { LexRuntimeV2 } = require("aws-sdk")
 
 function normalizePostIdsFilter(params = {}) {
     const hasIdsQuery = Object.prototype.hasOwnProperty.call(params, 'ids')
@@ -123,7 +119,7 @@ async function createPost({
         message: `User ${profile.nick_name} created post`,
         data: {
             user: profile._id,
-            post: post_creating_result.data._id
+            post: post_creating_result._id
         }
     })
 
@@ -146,7 +142,7 @@ async function editPost(id, data, profile) {
                     body: {
                         category: {
                             message: 'Category not found!',
-                            data: invalidIds
+                            data: data.category
                         }
                     }
                 }
@@ -156,8 +152,8 @@ async function editPost(id, data, profile) {
     
 
     if(Object.keys(data).includes("featured_image")) {
-        if(post.data.featured_image) {
-            await deleteFile(post.data.featured_image)
+        if(post.featured_image) {
+            await deleteFile(post.featured_image)
         }
 
         if(data.featured_image !== undefined && data.featured_image !== null) { 
@@ -183,7 +179,7 @@ async function editPost(id, data, profile) {
         message: `User ${profile.nick_name} updated post ${post._id}`,
         data: {
             user: profile._id,
-            post: result.data._id
+            post: result._id
         }
     })
 
@@ -201,7 +197,7 @@ async function getPosts(params, expand) {
 
     const posts = await getPostsByQuery(params);
 
-    const postIds = posts.data.map(post => post._id)
+    const postIds = posts.map(post => post._id)
 
     const commentsByPost = await getCommentsForPosts(postIds)
 
@@ -215,6 +211,12 @@ async function getPosts(params, expand) {
         : [];
 
     if (expand_options.includes("author")) {
+        const authorIds = [
+            ...new Set(
+                posts.map(post => post.author.toString())
+            )
+        ]
+
         const authors = await getUsersByIds(authorIds)
         const authorMap = new Map(
             authors.map(author => [
@@ -228,13 +230,6 @@ async function getPosts(params, expand) {
             ])
         )
 
-        const authorIds = [
-            ...new Set(
-                posts.map(post => post.author.toString())
-            )
-        ]
-
-
         for (const post of posts) {
             post.author = authorMap.get(
                 post.author.toString()
@@ -245,7 +240,7 @@ async function getPosts(params, expand) {
     if (expand_options.includes("category")) {
         const categoryIds = [
             ...new Set(
-                posts.data.map(post => post.category.toString())
+                posts.map(post => post.category.toString())
             )
         ]
 
@@ -258,7 +253,7 @@ async function getPosts(params, expand) {
             ])
         )
 
-        for (const post of posts.data) {
+        for (const post of posts) {
             post.category = categoryMap.get(
                 post.category.toString()
             ) || null
@@ -416,7 +411,7 @@ async function likePost(profile, post_id) {
     }
     
     return {
-        likes: result.data.likes
+        likes: result.likes
     }
 }
 

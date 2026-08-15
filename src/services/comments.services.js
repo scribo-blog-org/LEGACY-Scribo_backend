@@ -1,13 +1,10 @@
 const NotFoundError = require('../errors/NotFoundError');
 const ConflictError = require('../errors/ConflictError');
-const AppError = require('../errors/AppError');
 
 const { addCommentToPost,
     addReplyToComment,
     getCommentsByPostId,
     getCommentsByPostIds,
-    getCommentsByQuery,
-    deleteCommentById,
     getCommentById,
     deleteCommentsByIds,
     updateCommentById,
@@ -15,7 +12,7 @@ const { addCommentToPost,
     removeLikeFromComment
     } = require('../db/comments')
 const { getPostByQuery } = require('../db/posts')
-const { getUserByQuery, getUsersByIds } = require('../db/users.db')
+const { getUsersByIds } = require('../db/users.db')
 const { addNotificationToUserById, removeNotification } = require('../db/profile')
 
 async function commentPost(post_id, comment_text, parent_comment_id, profile) {
@@ -153,6 +150,31 @@ function buildCommentsTree(comments) {
     }
 
     return roots
+}
+
+function buildCommentsTreesByPost(comments) {
+    const commentsByPost = new Map()
+
+    for (const comment of comments) {
+        const postId = comment.post_id.toString()
+
+        if (!commentsByPost.has(postId)) {
+            commentsByPost.set(postId, [])
+        }
+
+        commentsByPost.get(postId).push(comment)
+    }
+
+    const result = new Map()
+
+    for (const [postId, postComments] of commentsByPost) {
+        result.set(
+            postId,
+            buildCommentsTree(postComments)
+        )
+    }
+
+    return result
 }
 
 async function deleteComment(comment_id) {

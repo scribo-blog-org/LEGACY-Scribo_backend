@@ -2,7 +2,7 @@ const { requestVerificationCode } = require("../../services/auth/verification.se
 
 const verificationEmailController = async (req, res, next) => {
     try {
-        const result = await requestVerificationCode(req.body.email)
+        await requestVerificationCode(req.body.email)
         
         res.status(200).json({
             status: true,

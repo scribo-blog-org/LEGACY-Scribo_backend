@@ -37,7 +37,7 @@ async function requestVerificationCode(email) {
     
     const user = await getUserByQuery({ email: email })
 
-    if(user.status) {
+    if(user) {
         throw new ConflictError({ message: "User with this email is already exists!" })
     }
 

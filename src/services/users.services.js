@@ -1,25 +1,22 @@
 const Mongoose = require('mongoose')
 
-const { getUserByQuery, addFollowToUser, addFollowerToUser, removeFollowerFromUser, removeFollowFromUser, getUsersByQuery, updateUserRole } = require('../db/users.db')
-const { getPostByQuery } = require('../db/posts')
-const { getCommentsByQuery } = require('../db/comments')
+const { getUserByQuery, addFollowToUser, addFollowerToUser, removeFollowerFromUser, removeFollowFromUser, getUsersByQuery, getUserById, updateUserRole } = require('../db/users.db')
 const { addNotificationToUserById } = require('../db/profile')
 
 const { canManageRole } = require('../authorization/roleChecks')
 
-const AppError = require('../errors/AppError')
 const NotFoundError = require('../errors/NotFoundError')
 const ConflictError = require('../errors/ConflictError')
 const ForbiddenError = require('../errors/ForbiddenError')
 
 async function getUserByNickName(nickName, options = {}) {
-    const user = await getUserByQuery({ "nick_name": nickName }, options=options)
+    const user = await getUserByQuery({ "nick_name": nickName }, options)
     
     if(!user) {
         throw new NotFoundError({ message: "User not found" })
     }
     
-    if(user.data.is_saved_posts_public === false) delete user.data.saved_posts
+    if(user.is_saved_posts_public === false) delete user.saved_posts
 
     return user
 }
@@ -29,7 +26,7 @@ async function getUsers(params){
 
     const validParams = Object.keys(params).filter(key => allowed.includes(key))
 
-    const users = await getUsersByQuery(validParams)
+    let users = await getUsersByQuery(validParams)
 
     users = users.map(user => {
         if(user.is_saved_posts_public === false) delete user.saved_posts
@@ -70,7 +67,7 @@ async function follow(userId, profile) {
 async function unfollow(userId, profile) {
     let followed_user = await getUserById(userId)
 
-    if(!followed_user.status) {
+    if(!followed_user) {
         throw new NotFoundError({ message: "User not found" })
     }
 

@@ -1,7 +1,8 @@
-const User = require('../models/User')
-const { getPostByQuery } = require('./posts')
-const { getUserByQuery } = require('./users.db')
 const { Types } = require("mongoose")
+
+const User = require('../models/User')
+
+const { getUserById } = require('./users.db')
 
 async function addPostToSaved(user_id, post_id) {
     return User.findByIdAndUpdate(
@@ -45,14 +46,14 @@ async function readNotificationsByUserId(user_id) {
 }
 
 async function addNotificationToUserById(user_id, notification) {
-    notification_types = ["follow", "unfollow", "comment_post", "reply_comment", "like_post"]
+    const notification_types = ["follow", "unfollow", "comment_post", "reply_comment", "like_post"]
 
     if(!notification || !notification.type || !notification_types.includes(notification.type)) {
         throw new Error(`Incorrect type of notification!\nnotification: ${JSON.stringify(notification, null, 2)}`)
     }
-    let user = await getUserByQuery({ "_id": user_id })
+    let user = await getUserById(user_id)
     
-    if(!user.status) {
+    if(!user) {
         throw new Error(`Failed to find user!\nuser_id: ${user_id}` )
     }
 
