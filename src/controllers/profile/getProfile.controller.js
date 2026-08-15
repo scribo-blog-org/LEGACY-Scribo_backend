@@ -1,5 +1,3 @@
-const { getProfile } = require('../../services/profile.services')
-
 const getProfileController = async (req, res, next) => {
     try {
         res.status(200).json({
