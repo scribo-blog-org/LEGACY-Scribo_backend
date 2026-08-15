@@ -4,7 +4,11 @@ const getUserByNickNameController = async (req, res, next) => {
     try {
         const user = await getUserByNickName(req.params["nick_name"])
 
-        res.status(200).json(user)
+        res.status(200).json({
+            success: true,
+            message: "User found successfully",
+            data: user
+        })
     }
     catch(error) {
         next(error)

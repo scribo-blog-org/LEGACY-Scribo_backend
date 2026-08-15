@@ -65,11 +65,7 @@ async function uploadImage(file, type, file_name) {
     }
 
     if (errors.length > 0) {
-        return {
-            status: false,
-            message: "Validation errors",
-            errors,
-        };
+        return null;
     }
 
     const fileExtension = path.extname(file.originalname).toLowerCase();
@@ -86,19 +82,7 @@ async function uploadImage(file, type, file_name) {
         const result = await s3.putObject(params).promise();
 
         if (result.ETag) {
-            return {
-                status: true,
-                message: "Successfully uploaded",
-                data: {
-                    url: `https://${process.env.AWS_CONNECT_BUCKET_NAME}.s3.${process.env.AWS_CONNECT_REGION}.amazonaws.com/${key}`,
-                },
-            };
-        } else {
-            return {
-                status: false,
-                message: "Failed upload",
-                data: result,
-            };
+            return `https://${process.env.AWS_CONNECT_BUCKET_NAME}.s3.${process.env.AWS_CONNECT_REGION}.amazonaws.com/${key}`
         }
     } catch (e) {
         global.Logger.log({

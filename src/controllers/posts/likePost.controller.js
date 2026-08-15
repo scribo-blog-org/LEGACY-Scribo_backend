@@ -3,7 +3,12 @@ const { likePost } = require("../../services/posts.services")
 const likePostController = async (req, res, next) => {
     try {
         const result = await likePost(req.profile, req.params.id);
-        res.status(200).json(result);
+        
+        res.status(200).json({
+            status: true,
+            message: "Post liked successfully!",
+            data: result
+        });
     }
     catch(error) {
         next(error)

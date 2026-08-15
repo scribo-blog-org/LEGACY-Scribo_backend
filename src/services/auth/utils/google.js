@@ -13,18 +13,12 @@ async function getEmailByGoogleToken(google_token) {
     );
 
     if(google_result.status === 401) { 
-        return {
-            status: false,
-            email: null
-        }
+        return null
     }
 
     const userEmail = (await google_result.json()).email
 
-    return {
-        status: true,
-        email: userEmail
-    }
+    return userEmail
 }
 
 module.exports = {

@@ -27,7 +27,7 @@ async function sendEmail({ to, subject, code }) {
 
         const info = await transporter.sendMail(mailOptions);
         
-        return { status: true, data: info };
+        return info;
 
     } catch (error) {
         throw new AppError({ message: "Failed to send email!"})

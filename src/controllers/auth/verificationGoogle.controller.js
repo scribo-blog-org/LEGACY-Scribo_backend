@@ -4,7 +4,11 @@ const verificationGoogleController = async (req, res, next) => {
     try {
         const result = await verifyGoogleToken({ google_token: req.body.google_token })
 
-        res.status(200).json(result)
+        res.status(200).json({
+            status: true,
+            message: "Google token is valid",
+            data: result
+        })
     }
     catch(error) {
         next(error)

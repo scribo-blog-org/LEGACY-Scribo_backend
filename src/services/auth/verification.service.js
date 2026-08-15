@@ -7,13 +7,9 @@ const { sendEmail } = require("../auth/utils/email")
 const { createVerificationCode, getVerificationCode } = require("../../db/email")
 
 async function verifyGoogleToken(google_token) {
-    if(!google_token) {
-        throw new AppError({ message: "Google token is required for this operation" })
-    }
-
     const email = await getEmailByGoogleToken(google_token)
 
-    if(!email.status) {
+    if(!email) {
         throw new BadRequestError({
             errors: {
                 body: {
@@ -29,12 +25,8 @@ async function verifyGoogleToken(google_token) {
     const user = await getUserByQuery({ email: email.email })
 
     return {
-        status: true,
-        message: "Google token is valid",
-        data: { 
-            email: email.email,
-            is_registered: user.status
-        }
+        email: email.email,
+        is_registered: !!user
     }
 }
 
@@ -59,25 +51,17 @@ async function requestVerificationCode(email) {
 
     const result = await createVerificationCode(email, code);
 
-    if(!result.status) {
+    if(!result) {
         throw new AppError({ message: "Failed to create verification code!" })
     }
 
-    return {
-        status: true,
-        message: "Verification code sent to email!",
-        data: null
-    }
+    return result
 }
 
 async function confirmEmailCode(email, email_code) {
-    if(!email || !email_code) {
-        throw new AppError({ message: "Email and verification code are required!" })
-    }
-
     const code = await getVerificationCode(email)
     
-    if(!code.status) {
+    if(!code) {
         throw new BadRequestError({
             message: "Verification code is not initiated!",
             errors: {
@@ -91,7 +75,7 @@ async function confirmEmailCode(email, email_code) {
         })
     }
 
-    if(code.data.code !== email_code) {
+    if(code.code !== email_code) {
         throw new BadRequestError({
             message: "Invalid verification code!",
             errors: {
@@ -105,11 +89,7 @@ async function confirmEmailCode(email, email_code) {
         })
     }
 
-    return {
-        status: true,
-        message: "Successfully confirmed email verification code!",
-        data: null
-    }
+    return true
 }
 
 module.exports = {

@@ -3,7 +3,12 @@ const readNotificationsService = require('../../services/profile.services').read
 const readNotificationsController = async (req, res, next) => {
     try {
         const result = await readNotificationsService(req.profile)
-        res.status(200).json(result)
+        
+        res.status(200).json({
+            status: true,
+            message: "Notifications read successfully!",
+            data: result
+        })
     }
     catch(error) {
         next(error)

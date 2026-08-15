@@ -1,14 +1,13 @@
 const { deleteFile } = require("./aws.services")
 
-const { getUserByQuery, getUsersByQuery } = require('../db/users.db')
-const { getPostByQuery, getPostsByQuery, createNewPost, updatePostById, deletePostById, doLikeToPost, doUnlikePost } = require('../db/posts')
-const { getCategories } = require('./categories.services.js')
-const { getCategoryById } = require('../db/category.js')
-const { addPostToSaved, removePostFromSaved, removeNotification } = require('../db/profile')
-const { addNotificationToUserById } = require('../db/profile.js')
-const { commentPost, getComments, deleteComment, flattenComments } = require('./comments.services.js')
-const { deleteCommentsByIds } = require('../db/comments.js')
+const { getUserByQuery, getUsersByQuery, getUsersByIds, getUserById } = require('../db/users.db')
+const { getPostById, getPostByQuery, getPostsByQuery, createNewPost, updatePostById, deletePostById, doLikeToPost, doUnlikePost } = require('../db/posts')
+const { getCategoryById, getCategoriesByIds } = require('../db/category.js')
+const { addPostToSaved, removeNotification, addNotificationToUserById, removePostFromSaved } = require('../db/profile')
+const { deleteCommentsByIds, getCommentsByPostId, getCommentsByPostIds } = require('../db/comments.js')
 
+const { getCategories } = require('./categories.services.js')
+const { commentPost, getComments, deleteComment, getCommentsForPosts } = require('./comments.services.js')
 const { uploadImage } = require('./aws.services')
 
 const { ObjectId } = require('mongodb');
@@ -86,13 +85,9 @@ async function createPost({
     featured_image,
     profile
 }) {
-    if(!profile || !title || !content_text || !category) {
-        throw new AppError({ message: "Missing required fields!" })
-    }
-
     const category_data = await getCategoryById(category)
 
-    if(!category_data.status) {
+    if(!category_data) {
         throw new BadRequestError({
             errors: {
                 body: {
@@ -112,11 +107,11 @@ async function createPost({
 
             const image_upload_result = await uploadImage(featured_image, "featured_image", Date.now().toString())
             
-            if(!image_upload_result.status) {
+            if(!image_upload_result) {
                 throw new AppError({ message: "Error to upload image to storage!" })
             }
             else {
-                img_url = image_upload_result.data.url
+                img_url = image_upload_result
             }
         }
     }
@@ -132,28 +127,20 @@ async function createPost({
         }
     })
 
-    return {
-        status: true,
-        message: "Success created post",
-        data: post_creating_result.data
-    }
+    return post_creating_result
 }
 
 async function editPost(id, data, profile) {
-    if(!id || !data || !profile) {
-        throw new AppError({ message: "Missing required fields!" })
-    }
+    const post = await getPostById(id)
 
-    const post = await getPostByQuery({ "_id": id })
-
-    if(!post.status) {
+    if(!post) {
         throw new NotFoundError({ message: "Post not found!" })
     }
 
     if(data.category) {
         const category_data = await getCategoryById(data.category)
     
-        if(!category_data.status) {
+        if(!category_data) {
             throw new BadRequestError({
                 errors: {
                     body: {
@@ -175,7 +162,10 @@ async function editPost(id, data, profile) {
 
         if(data.featured_image !== undefined && data.featured_image !== null) { 
             const upload_image_result = await uploadImage(data.featured_image, "featured_image", Date.now().toString())
-            data.featured_image = upload_image_result.data.url
+            if(!upload_image_result) {
+                throw new AppError({ message: "Error to upload image to storage!" })
+            }
+            data.featured_image = upload_image_result
         }
         else {
             data.featured_image = null
@@ -183,7 +173,11 @@ async function editPost(id, data, profile) {
     }
 
     const result = await updatePostById(id, data)
-    
+
+    if(!result) {
+        throw new NotFoundError({ message: "Post not found!" })
+    }
+
     global.Logger.log({
         type: "update_post",
         message: `User ${profile.nick_name} updated post ${post._id}`,
@@ -193,144 +187,153 @@ async function editPost(id, data, profile) {
         }
     })
 
-    return {
-        status: true,
-        message: "Success updated post",
-        data: result.data
-    }
-}
-
-async function insertAuthorToPost(post) {
-    if(!post) {
-        throw new AppError({ message: "Post is required to insert author!" })
-    }
-    
-    let author = await getUserByQuery({ '_id': post.author })
-    if(author.status) post.author = author.data
-
-    return post
+    return result
 }
 
 async function getPosts(params, expand) {
-    if (!params) {
-        throw new AppError({ message: "Missing required fields!" });
-    }
-
     params = normalizePostIdsFilter(params);
 
     if (params.__emptyPostsResult) {
         delete params.__emptyPostsResult;
 
-        return {
-            status: true,
-            message: "Success fetched posts",
-            data: []
-        };
+        return []
     }
 
     const posts = await getPostsByQuery(params);
 
-    if (!posts.status) {
-        throw new NotFoundError({ message: "Posts not found!" });
-    }
+    const postIds = posts.data.map(post => post._id)
 
-    await Promise.all(
-        posts.data.map(async (post) => {
-            const comments = await getComments(post._id);
-            post.comments = comments.data;
-        })
-    );
+    const commentsByPost = await getCommentsForPosts(postIds)
+
+    for (const post of posts) {
+        post.comments =
+            commentsByPost.get(post._id.toString()) || []
+    }
 
     const expand_options = expand
         ? expand.split(",").map((e) => e.trim())
         : [];
 
     if (expand_options.includes("author")) {
-        posts.data = await Promise.all(
-            posts.data.map(insertAuthorToPost)
-        );
+        const authors = await getUsersByIds(authorIds)
+        const authorMap = new Map(
+            authors.map(author => [
+                author._id.toString(),
+                {
+                    _id: author._id,
+                    nick_name: author.nick_name,
+                    avatar: author.avatar,
+                    is_verified: author.is_verified
+                }
+            ])
+        )
+
+        const authorIds = [
+            ...new Set(
+                posts.map(post => post.author.toString())
+            )
+        ]
+
+
+        for (const post of posts) {
+            post.author = authorMap.get(
+                post.author.toString()
+            ) || null
+        }
     }
 
     if (expand_options.includes("category")) {
-        const categories = await getCategories();
+        const categoryIds = [
+            ...new Set(
+                posts.data.map(post => post.category.toString())
+            )
+        ]
 
-        await Promise.all(
-            posts.data.map(async (post) => {
-                post.category = categories.data.find(
-                    (cat) => cat._id.toString() === post.category.toString()
-                );
-            })
-        );
+        const categories = await getCategoriesByIds(categoryIds)
+
+        const categoryMap = new Map(
+            categories.map(category => [
+                category._id.toString(),
+                category
+            ])
+        )
+
+        for (const post of posts.data) {
+            post.category = categoryMap.get(
+                post.category.toString()
+            ) || null
+        }
     }
 
-    return {
-        status: true,
-        message: "Success fetched posts",
-        data: posts.data
-    };
+    return posts
 }
 
-async function getPostById(id, expand) {
-    if(!id) {
-        throw new AppError({ message: "Missing required fields!" })
-    }
-
+async function getPost(id, expand) {
     const post = await getPostByQuery({ "_id": id })
 
-    if(!post.status) {
+    if(!post) {
         throw new NotFoundError({ message: "Post not found!" })
     }
 
     const expand_options = expand ? expand.split(',').map((e) => e.trim()) : []
 
     if(expand_options.includes("author")) {
-        post.data = await insertAuthorToPost(post.data)
+        const author = await getUserById(post.author)
+
+        if(!author) {
+            throw new AppError({ message: "Failed to get author for post!" })
+        }
+
+        post.author = {
+            _id: author._id,
+            nick_name: author.nick_name,
+            avatar: author.avatar,
+            is_verified: author.is_verified
+        }
     }
     
-    post.data.comments = await getComments(post.data._id, expand_options.includes("comments") ? "author" : null).data
+    post.comments = await getComments(post._id, expand_options.includes("comments") ? "author" : null)
 
     if(expand_options.includes("category")) {
-        const category_data = await getCategoryById(post.data.category)
-        if(category_data.status) {
-            post.data.category = category_data.data
+        const category_data = await getCategoryById(post.category)
+        if(category_data) {
+            post.category = category_data
         }
     }
 
-    return {
-        status: true,
-        message: "Success fetched post",
-        data: post.data
-    }
+    return post
 }
 
 async function deletePost(id, profile) {
-    if(!id) {
-        throw new AppError({ message: "Missing required fields!" })
+    const post = await getPostById(id)
+
+    if(!post) {
+        throw new NotFoundError({ message: "Post not found!" })
     }
 
-    let users_with_saved_post = await getUsersByQuery({ saved_posts: new ObjectId(id) })
+    await removePostFromSavedForUsers(id)
 
-    if(users_with_saved_post.status) {
-        for (const target_user of users_with_saved_post.data) {
-            const result = await removePostFromSaved(target_user._id, id)
+    const comments = await getCommentsByPostId(id)
+    
+    if(comments.length > 0) {
+        const commentIds = comments.map(comment => comment._id)
+    
+        const deletedComments = await deleteCommentsByIds(commentIds)
+        
+        if(!deletedComments) {
+            throw new AppError({ message: "Failed to delete comments!" })
         }
     }
 
-    const comments = await getComments(new ObjectId(id))
-
-    const comments_to_delete = flattenComments(comments.data)
-
-    const comments_delete_result = await deleteCommentsByIds(comments_to_delete)
-
     const result = await deletePostById(id)
     
-    if(!result.status) {
-        throw new NotFoundError({ message: "Failed to delete post!" })
+    if(!result) {
+        throw new AppError({ message: "Failed to delete post!" })
     }
 
-    await deleteFile(result.data.featured_image ?? "")
+    await deleteFile(result.featured_image ?? "")
 
-    const commentIds = comments_to_delete.map(comment => comment._id);
+    const commentIds = comments.map(comment => comment._id)
 
     await removeNotification({
         type: {
@@ -339,7 +342,7 @@ async function deletePost(id, profile) {
         comment: {
             $in: commentIds
         }
-    });
+    })
 
     await removeNotification({
         type: {
@@ -348,30 +351,20 @@ async function deletePost(id, profile) {
         post: id
     });
 
-
-
     global.Logger.log({
         type: "delete_post",
         message: `User ${profile.nick_name} deleted post ${id}`,
         data: {
-            post: result.data._id,
+            post: result._id,
             user: profile._id
         }
     })
 
-    return {
-        status: true,
-        message: "Success deleted post",
-        data: result.data
-    }
+    return result
 }
 
 async function savePost(profile, id) {
-    if(!profile || !id) {
-        throw new AppError({ message: "Missing required fields!" })
-    }
-
-    if(!(await getPostByQuery({ "_id": id })).status) {
+    if(!(await getPostByQuery({ "_id": id }))) {
         throw new NotFoundError({ message: "Post not found!" })
     }
     
@@ -382,97 +375,72 @@ async function savePost(profile, id) {
     const result =  await addPostToSaved(profile._id, id) 
     
     return {
-        status: true,
-        message: "Success saved post",
-        data: {
-            saved_posts: result.data.saved_posts
-        }
+        saved_posts: result.saved_posts
     }
 }
 
 async function unsavePost(profile, id) {
-    const user = await getUserByQuery({ "_id": profile._id }, { with_saved_posts: true })
-
-    if(!user.status) {
-        throw new UnAuthorizedError()
-    }
-
-    if(!(await getPostByQuery({ "_id": id })).status) {
+    if(!(await getPostByQuery({ "_id": id }))) {
         throw new NotFoundError({ message: "Post not found!" })
     }
 
-    if(!user.data.saved_posts.some((p) => String(p) === id )) {
+    if(!profile.saved_posts.some((p) => String(p) === id )) {
         throw new ConflictError({ message: "Post is not in saved posts!" })
     }
 
-    const result = await removePostFromSaved(user.data._id, id)
+    const result = await removePostFromSaved(profile._id, id)
+
 
     return {
-        status: true,
-        message: "Success unsaved post",
-        data: {
-            saved_posts: result.data.saved_posts
-        }
+        saved_posts: result.saved_posts
     }
 }
 
 async function likePost(profile, post_id) {
-    if(!profile || !post_id) {
-        throw new AppError({ message: "Missing required fields!" })
-    }
+    const post = await getPostById(post_id)
 
-    const post = await getPostByQuery({ "_id": post_id })
-
-    if(!post.status) {
+    if(!post) {
         throw new NotFoundError({ message: "Post not found!" })
     }
 
-    if(post.data.likes.some((like) => String(like) === String(profile._id))) {
+    if(post.likes.some((like) => String(like) === String(profile._id))) {
         throw new ConflictError({ message: "Post is already liked!" })
     }
 
     const result = await doLikeToPost(profile._id, post_id)
 
-    const author = await getUserByQuery({ "_id": post.data.author })
+    const author = await getUserById(post.author)
     
-    if(!author.data._id.equals(profile._id)) {
-        await addNotificationToUserById(author.data._id, { type: "like_post", user: profile._id, post: post_id })
+    if(!author._id.equals(profile._id)) {
+        await addNotificationToUserById(author._id, { type: "like_post", user: profile._id, post: post_id })
     }
-
+    
     return {
-        status: true,
-        message: "Success liked post",
-        data: { likes: result.data.likes}
+        likes: result.data.likes
     }
 }
 
 async function unlikePost(profile, post_id) {
-    if(!profile || !post_id) {
-        throw new AppError({ message: "Missing required fields!" })
-    }
-
     const post = await getPostByQuery({ "_id": post_id })
 
     if(!post) {
         throw new NotFoundError({ message: "Post not found!" })
     }
 
-    if(!post.data.likes.some((like) => String(like) === String(profile._id))) {
+    if(!post.likes.some((like) => String(like) === String(profile._id))) {
         throw new ConflictError({ message: "Post is not liked!" })
     }
 
     const result = await doUnlikePost(profile._id, post_id)
 
     return {
-        status: true,
-        message: "Success unliked post",
-        data: { likes: result.data.likes}
+        likes: result.likes
     }
 }
 
 module.exports = {
     getPosts,
-    getPostById,
+    getPost,
     createPost,
     editPost,
     deletePost,

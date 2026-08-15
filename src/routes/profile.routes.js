@@ -8,7 +8,7 @@ const validationMiddleware = require('../middlewares/validation/validate.middlew
 const { updateProfileSchema } = require('../middlewares/validation/schemes')
 
 const getProfileController = require('../controllers/profile/getProfile.controller')
-const updateProfileController = require('../controllers/profile/updateProfile.controller')
+const editProfileController = require('../controllers/profile/editProfile.controller')
 const readNotificationsController = require('../controllers/profile/readNotification.controller')
 
 router.get(
@@ -22,7 +22,7 @@ router.patch(
     authMiddleware,
     uploadMiddleware(["avatar"]),
     validationMiddleware(updateProfileSchema),
-    updateProfileController
+    editProfileController
 )
 
 router.patch(

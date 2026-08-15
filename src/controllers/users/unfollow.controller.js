@@ -4,7 +4,11 @@ const unfollowController = async (req, res, next) => {
     try {
         const result = await unfollow(req.params["id"], req.profile)
         
-        res.status(200).json(result)
+        res.status(200).json({
+            status: true,
+            message: "Unfollowed successfully!",
+            data: result
+        })
     }
     catch(error) {
         next(error)

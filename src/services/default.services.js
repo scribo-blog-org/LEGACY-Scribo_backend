@@ -1,5 +1,6 @@
 const defaultRoute = async () => {
     const apiUrl = process.env.API_DOCUMENTATION_ORIGIN;
+    
     if (!apiUrl) {
         return "Server is working, use /api for fetches"
     }

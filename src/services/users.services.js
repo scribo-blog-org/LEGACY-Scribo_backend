@@ -1,6 +1,6 @@
 const Mongoose = require('mongoose')
 
-const { getUserByQuery, followToUserById, unfollowToUserById , getUsersByQuery, updateUserRole } = require('../db/users.db')
+const { getUserByQuery, addFollowToUser, addFollowerToUser, removeFollowerFromUser, removeFollowFromUser, getUsersByQuery, updateUserRole } = require('../db/users.db')
 const { getPostByQuery } = require('../db/posts')
 const { getCommentsByQuery } = require('../db/comments')
 const { addNotificationToUserById } = require('../db/profile')
@@ -13,161 +13,106 @@ const ConflictError = require('../errors/ConflictError')
 const ForbiddenError = require('../errors/ForbiddenError')
 
 async function getUserByNickName(nickName, options = {}) {
-    if(!nickName) {
-        throw new AppError({ message: "Nick name is required" })
-    }
-
     const user = await getUserByQuery({ "nick_name": nickName }, options=options)
     
-    if(!user.status) {
+    if(!user) {
         throw new NotFoundError({ message: "User not found" })
     }
     
     if(user.data.is_saved_posts_public === false) delete user.data.saved_posts
 
-    return {
-        status: true,
-        message: "User found",
-        data: user.data
-    }
+    return user
 }
 
 async function getUsers(params){
-    if(!params) {
-        throw new AppError({ message: "Query parameters are required" })
-    }
+    const allowed = ["nick_name", "email", "role", "is_verified"]
 
-    const users = await getUsersByQuery(params)
-    
-    if(!users.status) {
-        throw new NotFoundError({ message: "Users not found" })
-    }
+    const validParams = Object.keys(params).filter(key => allowed.includes(key))
 
-    users.data = users.data.map(user => {
+    const users = await getUsersByQuery(validParams)
+
+    users = users.map(user => {
         if(user.is_saved_posts_public === false) delete user.saved_posts
+
         return user
     })
 
-    if(!users.status) {
-        throw new NotFoundError({ message: "Users not found" })
-    }
-
-    return {
-        status: true,
-        message: "Users found",
-        data: users.data
-    }
+    return users
 }
 
 async function follow(userId, profile) {
-    if(!userId || !profile) {
-        throw new AppError({ message: "User id and profile are required" })
-    }
+    let followed_user = await getUserById(userId)
 
-    let followed_user = await getUserByQuery({ "_id": userId })
-    if(!followed_user.status) {
+    if(!followed_user) {
         throw new NotFoundError({ message: "User not found" })
     }
     
-    if(profile.follows.some(item => item._id.equals(followed_user.data._id))) {
+    if(profile.follows.some(item => item._id.equals(followed_user._id))) {
         throw new ConflictError({ message: "You are already following this user!" })
     }
 
-    if(profile._id.equals(followed_user.data._id)) {
+    if(profile._id.equals(followed_user._id)) {
         throw new ConflictError({ message: "You cannot follow yourself!" })
     }
 
-    await addNotificationToUserById(followed_user.data._id, { type: "follow", user: profile._id })
+    await addNotificationToUserById(followed_user._id, { type: "follow", user: profile._id })
     
-    const follow = await followToUserById(profile._id, followed_user.data._id)
+    
+    const followed = await addFollowerToUser(profile._id, followed_user._id)
+    const follower = await addFollowToUser(profile._id, followed_user._id)
 
     return {
-        status: true,
-        message: "Success followed",
-        data: {
-            follower: {
-                id: follow.data.follower._id,
-                nick_name: follow.data.follower.nick_name,
-                follows: follow.data.follower.follows,
-                followers: follow.data.follower.followers,
-            },
-            followed: {
-                id: follow.data.followed._id,
-                nick_name: follow.data.followed.nick_name,
-                follows: follow.data.followed.follows,
-                followers: follow.data.followed.followers
-            }  
-        }
+        follower: follower,
+        followed: followed
     }
 }
 
 async function unfollow(userId, profile) {
-    if(!userId || !profile) {
-        throw new AppError({ message: "User id and profile are required" })
-    }
-
-    let followed_user = await getUserByQuery({ "_id": userId })
+    let followed_user = await getUserById(userId)
 
     if(!followed_user.status) {
         throw new NotFoundError({ message: "User not found" })
     }
-    
-    if(profile._id.equals(followed_user.data._id)) {
+
+    if(profile._id.equals(followed_user._id)) {
         throw new ConflictError({ message: "You cannot unfollow yourself!" })
     }
 
-    if(!profile.follows.some(item => item._id.equals(followed_user.data._id))) {
+    if(!profile.follows.some(item => item._id.equals(followed_user._id))) {
         throw new ConflictError({ message: "You are not following this user!" })
     }
 
-    await addNotificationToUserById(followed_user.data._id, { type: "unfollow", user: profile._id })
+    await addNotificationToUserById(followed_user._id, { type: "unfollow", user: profile._id })
 
-    const follow = await unfollowToUserById(profile._id, followed_user.data._id)
-    
+    const followed = await removeFollowerFromUser(profile._id, followed_user._id)
+    const follower = await removeFollowFromUser(profile._id, followed_user._id)
+
     return {
-        status: true,
-        message: "Success unfollowed",
-        data: {
-            follower: {
-                id: follow.data.follower._id,
-                nick_name: follow.data.follower.nick_name,
-                follows: follow.data.follower.follows,
-                followers: follow.data.follower.followers,
-            },
-            followed: {
-                id: follow.data.followed._id,
-                nick_name: follow.data.followed.nick_name,
-                follows: follow.data.followed.follows,
-                followers: follow.data.followed.followers
-            }  
-        }
+        follower: follower,
+        followed: followed
     }
 }
 
 async function updateRole(userId, newRole, profile) {
-    if(!userId || !newRole || !profile) {
-        throw new AppError({ message: "User id, new role and profile are required" })
-    }
+    const user = await getUserById(userId)
     
-    const user = await getUserByQuery({ "_id": userId })
-    
-    if(!user.status) {
+    if(!user) {
         throw new NotFoundError({ message: "User not found" })
     }
 
-    const canManage = canManageRole(profile.role, newRole, user.data.role)
+    const canManage = canManageRole(profile.role, newRole, user.role)
     
     if(!canManage) {
         throw new ForbiddenError({ message: "You do not have permission to update this user's role" })
     }
 
-    if(user.data.role === newRole) {
+    if(user.role === newRole) {
         throw new ConflictError({ message: "User already has this role" })
     }
 
-    const result = await updateUserRole(userId, newRole)
+    const result = await updateUserRole(user._id, newRole)
 
-    if(!result.status) {
+    if(!result) {
         throw new NotFoundError({ message: "User not found" })
     }
 
@@ -181,13 +126,7 @@ async function updateRole(userId, newRole, profile) {
         }
     })
 
-    return {
-        status: true,
-        message: "User role updated successfully",
-        data: {
-            user: result.data
-        }
-    }
+    return result
 }
 
 module.exports = {

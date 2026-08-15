@@ -10,7 +10,11 @@ const createPostController = async (req, res, next) => {
             profile: req.profile
         })
     
-        res.status(200).json(result)
+        res.status(200).json({
+            status: true,
+            message: "Post created successfully!",
+            data: result
+        })
     }
     catch(error) {
         next(error)

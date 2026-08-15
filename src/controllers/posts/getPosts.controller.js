@@ -8,7 +8,11 @@ const getPostsController = async (req, res, next) => {
 
         const result = await getPosts(params, expand)
 
-        res.status(200).json(result)
+        res.status(200).json({
+            status: true,
+            message: "Posts fetched successfully!",
+            data: result
+        })
     }
     catch(error) {
         next(error)

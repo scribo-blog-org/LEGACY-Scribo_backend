@@ -1,58 +1,55 @@
 const { getAllCategories, getCategoryById, updateCategoryById, createNewCategory, deleteCategoryById, getCategoryByName } = require('../db/category')
 const { getPostsByQuery } = require('../db/posts')
 
-const AppError = require("../errors/AppError")
 const ConflictError = require("../errors/ConflictError")
 const NotFoundError = require("../errors/NotFoundError")
 
 async function getCategories() {
-    const result = await getAllCategories();
+    const categories = await getAllCategories()
+    const posts = await getPostsByQuery()
 
-    if(result.status === true) {
-        for(let category of result.data) {
-            const posts = await getPostsByQuery({ category: category._id })
-            if(posts.status){
-                category.posts_count = posts.data.length
-            }
-            else {
-                category.posts_count = 0
-            }
-        }
+    const postsCount = {}
+
+    for (const post of posts) {
+        const categoryId = post.category.toString()
+        postsCount[categoryId] = (postsCount[categoryId] || 0) + 1
     }
 
-    return {
-        status: true,
-        message: "Success fetched categories",
-        data: result.data
+    for (const category of categories) {
+        category.posts_count = postsCount[category._id.toString()] || 0
     }
+
+    return categories
 }
 
 async function editCategory(id, data, profile) {
     const category = await getCategoryById(id)
 
-    if(!category.status) {
+    if(!category) {
         throw new NotFoundError({ message: "Category not found!" })
     }
 
     const is_name_exists = await getCategoryByName(data.name)
 
-    if(is_name_exists.status && is_name_exists.data._id.toString() !== id.toString()) {
+    if(is_name_exists && is_name_exists._id.toString() !== id.toString()) {
         throw new ConflictError({ message: "Category name already exists!" })
     }
 
-    let result = await updateCategoryById(id, data)
-
-    if(result.status) {
-        const posts = await getPostsByQuery({ category: id })
-        result.data.posts_count = posts.status ? posts.data.length : 0
+    const result = await updateCategoryById(id, data)
+    
+    if(!result) {
+        throw new NotFoundError({ message: "Category not found!" })
     }
+    
+    const posts = await getPostsByQuery({ category: id })
+    result.posts_count = posts.length
 
     global.Logger.log({
         type: "update_category",
         message: `User ${profile.nick_name} updated category`,
         data: {
             user: profile._id,
-            category: result.data._id
+            category: result._id
         }
     })
 
@@ -60,86 +57,55 @@ async function editCategory(id, data, profile) {
 }
 
 async function createCategory(data, profile) {
-    if(!data.name) {
-        throw new AppError({ message: "Name is required!" })
-    }
-
     const is_name_exists = await getCategoryByName(data.name)
 
-    if(is_name_exists.status) {
+    if(is_name_exists) {
         throw new ConflictError({ message: "Category name already exists!" })
     }
 
     const result = await createNewCategory(data.name, data.icon, data.color)
     
-    if(result.status) {
-        global.Logger.log({
-            type: "create_category",
-            message: `User ${profile.nick_name} created category`,
-            data: {
-                user: profile._id,
-                category: result.data._id
-            }
-        })
+    global.Logger.log({
+        type: "create_category",
+        message: `User ${profile.nick_name} created category`,
+        data: {
+            user: profile._id,
+            category: result._id
+        }
+    })
 
-        return {
-            status: true,
-            message: "Category created successfully",
-            data: result.data
-        }
-    }
-    else {
-        return {
-            status: false,
-            message: result.message,
-            data: null
-        }
-    }
+    return result
 }
 
 async function deleteCategory(id, profile) {
-    if(!id) {
-        throw new AppError({ message: "Category ID is required!" })
-    }
-
     const category = await getCategoryById(id)
 
-    if(!category.status) {
+    if(!category) {
         throw new NotFoundError({ message: "Category not found!" })
     }
 
     const posts = await getPostsByQuery({ category: id })
 
-    if(posts.status && posts.data.length > 0) {
+    if(posts.length > 0) {
         throw new ConflictError({ message: "Cannot delete category with associated posts!" })
     }
 
     const result = await deleteCategoryById(id)
 
-    if(result.status) {
-        global.Logger.log({
-            type: "delete_category",
-            message: `User ${profile.nick_name} deleted category`,
-            data: {
-                user: profile._id,
-                category: id
-            }
-        })
-
-        return {
-            status: true,
-            message: "Category deleted successfully",
-            data: result.data
-        }
+    if(!result) {
+        throw new NotFoundError({ message: "Category not found!" })
     }
 
-    else {
-        return {
-            status: false,
-            message: result.message,
-            data: null
+    global.Logger.log({
+        type: "delete_category",
+        message: `User ${profile.nick_name} deleted category`,
+        data: {
+            user: profile._id,
+            category: id
         }
-    }
+    })
+
+    return result
 }
 
 module.exports = {

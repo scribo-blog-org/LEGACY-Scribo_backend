@@ -1,4 +1,4 @@
-const { get_jwt_token } = require('../../services/auth/utils/jwt')
+const { decode } = require('../../services/auth/utils/jwt')
 const mongoose = require('mongoose');
 
 const BadRequestError = require('../../errors/BadRequestError')
@@ -57,7 +57,7 @@ function validate(fields) {
                     break
                 }
                 try{
-                    const token_result = get_jwt_token(field.value)
+                    const token_result = decode(field.value)
                     
                     if(!token_result.status) {
                         errors = push_to_errors(errors, field.source, { type: "token", data: { message: "Incorrect token!", data: field.value }})

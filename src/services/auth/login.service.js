@@ -3,9 +3,9 @@ const BadRequestError = require("../../errors/BadRequestError")
 const UnAuthorizedError = require("../../errors/UnAuthorizedError")
 const AppError = require("../../errors/AppError")
  
-const { compare_passwords } = require("./utils/password")
+const { comparePassword } = require("./utils/password")
 const { getEmailByGoogleToken } = require("./utils/google")
-const { set_jwt_token } = require("./utils/jwt")
+const { encode } = require("./utils/jwt")
 
 const { getUserByQuery } = require('../../db/users.db')
 
@@ -39,7 +39,7 @@ async function loginByGoogle(google_token) {
         status: true,
         message: "Authorized",
         data: {
-            token: set_jwt_token(user.data._id)
+            token: encode(user.data._id)
         }
     }
 }
@@ -59,7 +59,7 @@ async function loginByUserName({ userName, password }) {
         throw new NotFoundError({ message: "User with this email or nick name is not found" })
     }
 
-    if(!await compare_passwords(password, user.data.password)) {
+    if(!await comparePassword(password, user.data.password)) {
         throw new UnAuthorizedError({ message: "Invalid password or login" })
     }
 
@@ -67,7 +67,7 @@ async function loginByUserName({ userName, password }) {
         status: true,
         message: "Authorized",
         data: {
-            token: set_jwt_token(user.data._id)
+            token: encode(user.data._id)
         }
     }
 }

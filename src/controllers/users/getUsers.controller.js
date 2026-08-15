@@ -2,10 +2,13 @@ const { getUsers } = require("../../services/users.services")
 
 const getUsersController = async (req, res, next) => {
     try {
-        const params = req.query
-        const users = await getUsers(params)
+        const users = await getUsers(req.query)
 
-        res.status(200).json(users)
+        res.status(200).json({
+            success: true,
+            message: "Users retrieved successfully",
+            data: users
+        })
     }
     catch(error) {
         next(error)
