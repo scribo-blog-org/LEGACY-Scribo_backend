@@ -1,8 +1,8 @@
-const { getPostById } = require('../../services/posts.services')
+const { getPost } = require('../../services/posts.services')
 
 const getPostByIdController = async (req, res, next) => {
     try {
-        const result = await getPostById(req.params.id, req.query.expand)
+        const result = await getPost(req.params.id, req.query.expand)
 
         res.status(200).json({
             status: true,
