@@ -2,8 +2,8 @@ const { requestVerificationCode } = require("../../services/auth/verification.se
 
 const verificationEmailController = async (req, res, next) => {
     try {
-        await requestVerificationCode(req.body.email)
-        
+        const result = await requestVerificationCode(req.body.email)
+
         res.status(200).json({
             status: true,
             message: "Verification code sent to email",
