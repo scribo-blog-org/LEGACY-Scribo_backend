@@ -44,7 +44,7 @@ async function loginByGoogle(google_token) {
 async function loginByUserName({ userName, password }) {
     const user = await getUserByQuery({
         $or: [
-            { email: userName },
+            { email: userName.toLowerCase() },
             { nick_name: userName }
         ]
     }, { with_password: true });

@@ -35,8 +35,8 @@ async function requestVerificationCode(email) {
         throw new AppError({ message: "Email is required to send verification code!" })
     }
     
-    const user = await getUserByQuery({ email: email })
-
+    const user = await getUserByQuery({ email: email.toLowerCase() })
+    
     if(user) {
         throw new ConflictError({ message: "User with this email is already exists!" })
     }
