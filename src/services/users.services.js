@@ -22,7 +22,7 @@ async function getUserByNickName(nickName, options = {}) {
 }
 
 async function getUsers(params){
-    const allowed = ["nick_name", "email", "role", "is_verified"]
+    const allowed = ["nick_name", "email", "role", "is_verified", "_id"]
 
     const validParams = Object.fromEntries(
         Object.entries(params)
