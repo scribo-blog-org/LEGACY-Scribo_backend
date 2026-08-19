@@ -11,6 +11,7 @@ const getDocsJson = () => {
         const backendVersion = packageJson.version;
 
         openApi.info["x-backend-version"] = backendVersion;
+        openApi.servers = [{ url: process.env.API_ORIGIN }];
 
         return openApi;
     } catch (err) {
