@@ -1,4 +1,4 @@
-const { getPostById } = require('../../services/posts.services');
+const { getPost } = require('../../services/posts.services');
 const ForbiddenError  = require('../../errors/ForbiddenError');
 const { hasPermissions } = require('../roleChecks');
 const PERMISSIONS = require('../permissions');
@@ -18,7 +18,7 @@ const canCreate = async (req, res, next) => {
 
 const canEdit = async (req, res, next) => {
     try {
-        const post = await getPostById(req.params.id);
+        const post = await getPost(req.params.id);
         
         if(!post) { throw new NotFoundError(post.message) }
 
@@ -34,7 +34,7 @@ const canEdit = async (req, res, next) => {
 
 const canDelete = async (req, res, next) => {
     try {
-        const post = await getPostById(req.params.id);
+        const post = await getPost(req.params.id);
         
         if(!post) { throw new NotFoundError(post.message) }
 
