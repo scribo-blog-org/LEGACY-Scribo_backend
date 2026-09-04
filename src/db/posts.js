@@ -4,8 +4,26 @@ async function getPostById(id) {
     return Post.findById(id).lean()
 }
 
-async function getPostsByQuery(query = {}) {
-    return Post.find(query).lean()
+async function getPostsByQuery(query = {}, options = {}) {
+    let request = Post.find(query)
+
+    if (options.sort) {
+        request = request.sort(options.sort)
+    }
+
+    if (options.skip != null) {
+        request = request.skip(options.skip)
+    }
+
+    if (options.limit != null) {
+        request = request.limit(options.limit)
+    }
+
+    return request.lean()
+}
+
+async function countPostsByQuery(query = {}) {
+    return Post.countDocuments(query)
 }
 
 async function getPostByQuery(query = {}) {
@@ -51,6 +69,7 @@ async function doUnlikePost(user_id, post_id) {
 module.exports = {
     getPostById,
     getPostsByQuery,
+    countPostsByQuery,
     getPostByQuery,
     createNewPost,
     updatePostById,

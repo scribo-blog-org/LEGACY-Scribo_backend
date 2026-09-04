@@ -1,15 +1,17 @@
 const { getPost } = require('../../services/posts.services');
 const ForbiddenError  = require('../../errors/ForbiddenError');
-const { hasPermissions } = require('../roleChecks');
+const { getActor, hasPermissions, isResourceOwner } = require('../roleChecks');
 const PERMISSIONS = require('../permissions');
 
 const NotFoundError = require('../../errors/NotFoundError');
 
 const canCreate = async (req, res, next) => {
     try {
-        if(hasPermissions(req.profile, PERMISSIONS.CREATE_POST)) { return next() }
+        if (hasPermissions(getActor(req), PERMISSIONS.CREATE_POST)) {
+            return next()
+        }
 
-        throw new ForbiddenError("You don't have permission to create a post");
+        throw new ForbiddenError({ message: "You don't have permission to create a post" });
 
     } catch (error) {
         next(error);
@@ -19,14 +21,21 @@ const canCreate = async (req, res, next) => {
 const canEdit = async (req, res, next) => {
     try {
         const post = await getPost(req.params.id);
+        const actor = getActor(req)
         
-        if(!post) { throw new NotFoundError(post.message) }
+        if (!post) {
+            throw new NotFoundError({ message: "Post is not found" })
+        }
 
-        if(post.author.toString() === req.profile._id.toString()) { return next() }
+        if (isResourceOwner(post.author, actor.id)) {
+            return next()
+        }
 
-        if(hasPermissions(req.profile, PERMISSIONS.EDIT_ANY_POST)) { return next() }
+        if (hasPermissions(actor, PERMISSIONS.EDIT_ANY_POST)) {
+            return next()
+        }
 
-        throw new ForbiddenError("You don't have permission to update a post");
+        throw new ForbiddenError({ message: "You don't have permission to update a post" });
     } catch (error) {
         next(error);
     }
@@ -35,14 +44,21 @@ const canEdit = async (req, res, next) => {
 const canDelete = async (req, res, next) => {
     try {
         const post = await getPost(req.params.id);
+        const actor = getActor(req)
         
-        if(!post) { throw new NotFoundError(post.message) }
+        if (!post) {
+            throw new NotFoundError({ message: "Post is not found" })
+        }
 
-        if(post.author.toString() === req.profile._id.toString()) { return next() }
+        if (isResourceOwner(post.author, actor.id)) {
+            return next()
+        }
 
-        if(hasPermissions(req.profile, PERMISSIONS.DELETE_ANY_POST)) { return next() }
+        if (hasPermissions(actor, PERMISSIONS.DELETE_ANY_POST)) {
+            return next()
+        }
 
-        throw new ForbiddenError("You don't have permission to delete a post");
+        throw new ForbiddenError({ message: "You don't have permission to delete a post" });
     } catch (error) {
         next(error);
     }

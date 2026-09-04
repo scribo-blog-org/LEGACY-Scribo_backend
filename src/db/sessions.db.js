@@ -57,6 +57,10 @@ async function deleteSessionById(id) {
     return Session.findByIdAndDelete(id).lean()
 }
 
+async function deleteSessionsByUserId(userId) {
+    return Session.deleteMany({ user: userId })
+}
+
 async function deleteExpiredSessions() {
     return Session.deleteMany({ expiresAt: { $lte: new Date() } })
 }
@@ -67,6 +71,7 @@ module.exports = {
     getSessionsByUserId,
     updateSessionById,
     deleteSessionById,
+    deleteSessionsByUserId,
     deleteExpiredSessions,
     REFRESH_TTL_MS
 }

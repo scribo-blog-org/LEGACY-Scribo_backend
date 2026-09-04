@@ -16,7 +16,8 @@ function encodeAccess(user) {
         {
             id: String(user._id),
             email: user.email,
-            role: user.role
+            role: user.role,
+            nick_name: user.nick_name
         },
         accessKey(),
         { expiresIn: ACCESS_TTL }
@@ -35,27 +36,34 @@ function encodeRefresh({ userId, sessionId }) {
     )
 }
 
-function decode(token) {
+function decodeAccess(token) {
     try {
         const decoded = jwt.verify(token, accessKey());
 
-        if (decoded?.tokenType === "refresh") {
+        if (decoded?.tokenType === "refresh" || decoded?.typ === "refresh") {
             return null
         }
 
-        if (decoded?.id) {
-            return decoded.id
+        const id = decoded?.id || decoded?.user_id
+
+        if (!id || !decoded.role) {
+            return null
         }
 
-        if (decoded?.user_id) {
-            return decoded.user_id
+        return {
+            id: String(id),
+            email: decoded.email || null,
+            role: decoded.role,
+            nick_name: decoded.nick_name || null
         }
-
-        return null
     }
     catch (err) {
         return null
     }
+}
+
+function decode(token) {
+    return decodeAccess(token)?.id || null
 }
 
 function decodeRefresh(token) {
@@ -80,6 +88,7 @@ function decodeRefresh(token) {
 module.exports = {
     encodeAccess,
     encodeRefresh,
+    decodeAccess,
     decode,
     decodeRefresh
 }

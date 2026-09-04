@@ -74,14 +74,19 @@ function validate(fields) {
                     errors = push_to_errors(errors, field.source, { type: "description", data: { message: "Description must be longer than 60 characters!", data: field.value }})
                 }
                 break
-            case "category":
-                if(!field.value) {
-                    errors = push_to_errors(errors, field.source, { type: "category", data: { message: "Missing category!", data: field.value }})
-                }
-                if (!mongoose.Types.ObjectId.isValid(field.value)) {
-                    errors = push_to_errors(errors, field.source, { type: "category", data: { message: "Incorrect type!", data: field.value }})
+            case "category": {
+                const values = Array.isArray(field.value) ? field.value : [field.value]
+                for (const value of values) {
+                    if(!value) {
+                        errors = push_to_errors(errors, field.source, { type: "category", data: { message: "Missing category!", data: field.value }})
+                        break
+                    }
+                    if (!mongoose.Types.ObjectId.isValid(value)) {
+                        errors = push_to_errors(errors, field.source, { type: "category", data: { message: "Incorrect type!", data: field.value }})
+                    }
                 }
                 break
+            }
                 case "icon":
                     if (field.value !== null && !Number.isInteger(field.value)) {
                         errors = push_to_errors(errors, field.source, {
@@ -131,16 +136,19 @@ function validate(fields) {
                     errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Nick name must be less than 21 characters!", data: field.value }})
                 }
                 break
-            case "_id":
-                if(!field.value || field.value.toString().trim().length === 0) {
-                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Id must be not empty!", data: field.value }})
-                }
-                else {
-                    if (!mongoose.Types.ObjectId.isValid(field.value)) {
+            case "_id": {
+                const values = Array.isArray(field.value) ? field.value : String(field.value).split(',')
+                for (const value of values) {
+                    const id = String(value).trim()
+                    if(!id) {
+                        errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Id must be not empty!", data: field.value }})
+                    }
+                    else if (!mongoose.Types.ObjectId.isValid(id)) {
                         errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect type!", data: field.value }})
                     }
                 }
                 break
+            }
             case "id":
                 if(!field.value || field.value.trim().length === 0) {
                     errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Id must be not empty!", data: field.value }})
@@ -151,15 +159,20 @@ function validate(fields) {
                     }
                 }
                 break
-            case "author":
-                if(!field.value || field.value.trim().length === 0) {
-                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Id must be not empty!", data: field.value }})
-                    break
-                }
-                if (!mongoose.Types.ObjectId.isValid(field.value)) {
-                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect type!", data: field.value }})
+            case "author": {
+                const values = Array.isArray(field.value) ? field.value : String(field.value).split(',')
+                for (const value of values) {
+                    const id = String(value).trim()
+                    if(!id) {
+                        errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Id must be not empty!", data: field.value }})
+                        break
+                    }
+                    if (!mongoose.Types.ObjectId.isValid(id)) {
+                        errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect type!", data: field.value }})
+                    }
                 }
                 break
+            }
             case "is_verified":
                 if(!isBooleanValue(field.value)) {
                     errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Field is_verified should be boolean!", data: field.value }})
@@ -214,6 +227,27 @@ function validate(fields) {
                 }
                 if(field.value.length > 500) {
                     errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Comment text must be less than 500 characters!", data: field.value }})
+                }
+                break
+            case "page":
+            case "limit": {
+                const n = Number.parseInt(field.value, 10)
+                if (!Number.isInteger(n) || n < 1) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Must be a positive integer!", data: field.value }})
+                    break
+                }
+                if (field.type === "limit" && n > 50) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Limit cannot be greater than 50!", data: field.value }})
+                }
+                break
+            }
+            case "user":
+            case "post":
+                if(!field.value || field.value.toString().trim().length === 0) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Id must be not empty!", data: field.value }})
+                }
+                else if (!mongoose.Types.ObjectId.isValid(field.value)) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect type!", data: field.value }})
                 }
                 break
             case "role":

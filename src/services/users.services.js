@@ -4,6 +4,7 @@ const { getUserByQuery, addFollowToUser, addFollowerToUser, removeFollowerFromUs
 const { addNotificationToUserById } = require('../db/profile')
 
 const { canManageRole } = require('../authorization/roleChecks')
+const { deleteSessionsByUserId } = require('../db/sessions.db')
 
 const NotFoundError = require('../errors/NotFoundError')
 const ConflictError = require('../errors/ConflictError')
@@ -42,24 +43,29 @@ async function getUsers(params){
 
 async function follow(userId, profile) {
     let followed_user = await getUserById(userId)
+    const actor = await getUserById(profile._id)
 
     if(!followed_user) {
         throw new NotFoundError({ message: "User not found" })
     }
+
+    if(!actor) {
+        throw new NotFoundError({ message: "User not found" })
+    }
     
-    if(profile.follows.some(item => item._id.equals(followed_user._id))) {
+    if(actor.follows.some(item => String(item._id || item) === String(followed_user._id))) {
         throw new ConflictError({ message: "You are already following this user!" })
     }
 
-    if(profile._id.equals(followed_user._id)) {
+    if(String(actor._id) === String(followed_user._id)) {
         throw new ConflictError({ message: "You cannot follow yourself!" })
     }
 
-    await addNotificationToUserById(followed_user._id, { type: "follow", user: profile._id })
+    await addNotificationToUserById(followed_user._id, { type: "follow", user: actor._id })
     
     
-    const followed = await addFollowerToUser(profile._id, followed_user._id)
-    const follower = await addFollowToUser(profile._id, followed_user._id)
+    const followed = await addFollowerToUser(actor._id, followed_user._id)
+    const follower = await addFollowToUser(actor._id, followed_user._id)
 
     return {
         follower: follower,
@@ -69,23 +75,28 @@ async function follow(userId, profile) {
 
 async function unfollow(userId, profile) {
     let followed_user = await getUserById(userId)
+    const actor = await getUserById(profile._id)
 
     if(!followed_user) {
         throw new NotFoundError({ message: "User not found" })
     }
 
-    if(profile._id.equals(followed_user._id)) {
+    if(!actor) {
+        throw new NotFoundError({ message: "User not found" })
+    }
+
+    if(String(actor._id) === String(followed_user._id)) {
         throw new ConflictError({ message: "You cannot unfollow yourself!" })
     }
 
-    if(!profile.follows.some(item => item._id.equals(followed_user._id))) {
+    if(!actor.follows.some(item => String(item._id || item) === String(followed_user._id))) {
         throw new ConflictError({ message: "You are not following this user!" })
     }
 
-    await addNotificationToUserById(followed_user._id, { type: "unfollow", user: profile._id })
+    await addNotificationToUserById(followed_user._id, { type: "unfollow", user: actor._id })
 
-    const followed = await removeFollowerFromUser(profile._id, followed_user._id)
-    const follower = await removeFollowFromUser(profile._id, followed_user._id)
+    const followed = await removeFollowerFromUser(actor._id, followed_user._id)
+    const follower = await removeFollowFromUser(actor._id, followed_user._id)
 
     return {
         follower: follower,
@@ -115,6 +126,8 @@ async function updateRole(userId, newRole, profile) {
     if(!result) {
         throw new NotFoundError({ message: "User not found" })
     }
+
+    await deleteSessionsByUserId(user._id)
 
     global.Logger.log({
         type: "update_role",
