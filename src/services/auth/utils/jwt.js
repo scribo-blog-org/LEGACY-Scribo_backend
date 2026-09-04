@@ -1,28 +1,76 @@
 const jwt = require("jsonwebtoken")
 
-function encode(user_id) {
-    const key = process.env.JWTKEY
+const ACCESS_TTL = "15m"
+const REFRESH_TTL = "30d"
 
+function accessKey() {
+    return process.env.JWTKEY
+}
+
+function refreshKey() {
+    return process.env.JWT_REFRESH_KEY || `${process.env.JWTKEY}-refresh`
+}
+
+function encodeAccess(user) {
     return jwt.sign(
-        { user_id: user_id },
-        key,
-        {}
+        {
+            id: String(user._id),
+            email: user.email,
+            role: user.role
+        },
+        accessKey(),
+        { expiresIn: ACCESS_TTL }
+    )
+}
+
+function encodeRefresh({ userId, sessionId }) {
+    return jwt.sign(
+        {
+            id: String(userId),
+            sessionId: String(sessionId),
+            tokenType: "refresh"
+        },
+        refreshKey(),
+        { expiresIn: REFRESH_TTL }
     )
 }
 
 function decode(token) {
-    const key = process.env.JWTKEY
-
     try {
-        const decoded = jwt.verify(token, key);
-        
-        if (decoded && decoded.user_id) {
+        const decoded = jwt.verify(token, accessKey());
+
+        if (decoded?.tokenType === "refresh") {
+            return null
+        }
+
+        if (decoded?.id) {
+            return decoded.id
+        }
+
+        if (decoded?.user_id) {
             return decoded.user_id
         }
 
-        else {
+        return null
+    }
+    catch (err) {
+        return null
+    }
+}
+
+function decodeRefresh(token) {
+    try {
+        const decoded = jwt.verify(token, refreshKey());
+
+        if (!decoded?.id || !decoded?.sessionId) {
             return null
         }
+
+        if (decoded.tokenType !== "refresh" && decoded.typ !== "refresh") {
+            return null
+        }
+
+        return decoded
     }
     catch (err) {
         return null
@@ -30,6 +78,8 @@ function decode(token) {
 }
 
 module.exports = {
-    encode,
-    decode
+    encodeAccess,
+    encodeRefresh,
+    decode,
+    decodeRefresh
 }

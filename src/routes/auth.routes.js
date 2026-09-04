@@ -23,6 +23,13 @@ const verificationGoogleController = require('../controllers/auth/verificationGo
 const verificationEmailController = require('../controllers/auth/verificationEmail.controller');
 const verificationEmailConfirmController = require('../controllers/auth/verificationEmailConfirm.controller');
 
+const refreshController = require('../controllers/auth/refresh.controller');
+const logoutController = require('../controllers/auth/logout.controller');
+const getSessionsController = require('../controllers/auth/getSessions.controller');
+const deleteSessionController = require('../controllers/auth/deleteSession.controller');
+
+const authMiddleware = require('../middlewares/auth.middleware');
+
 router.post(
     '/login/username',
     validateMiddleware(loginUsernameSchema),
@@ -65,6 +72,22 @@ router.post(
     '/verification/email/confirm',
     validateMiddleware(verificationEmailConfirmSchema),
     verificationEmailConfirmController
+)
+
+router.post('/refresh', refreshController)
+
+router.post('/logout', logoutController)
+
+router.get(
+    '/sessions',
+    authMiddleware,
+    getSessionsController
+)
+
+router.delete(
+    '/sessions/:id',
+    authMiddleware,
+    deleteSessionController
 )
 
 module.exports = router

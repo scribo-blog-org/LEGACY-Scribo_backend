@@ -5,7 +5,6 @@ const AppError = require("../../errors/AppError")
  
 const { comparePassword } = require("./utils/password")
 const { getEmailByGoogleToken } = require("./utils/google")
-const { encode } = require("./utils/jwt")
 
 const { getUserByQuery } = require('../../db/users.db')
 
@@ -36,9 +35,7 @@ async function loginByGoogle(google_token) {
         throw new NotFoundError({ message: "User with this email is not found" })
     }
 
-    return {
-        token: encode(user._id)
-    }
+    return user
 }
 
 async function loginByUserName({ userName, password }) {
@@ -57,9 +54,9 @@ async function loginByUserName({ userName, password }) {
         throw new UnAuthorizedError({ message: "Invalid password or login" })
     }
 
-    return {
-        token: encode(user._id)
-    }
+    delete user.password
+
+    return user
 }
 
 module.exports = {
