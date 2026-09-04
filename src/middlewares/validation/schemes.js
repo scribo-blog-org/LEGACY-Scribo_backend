@@ -76,6 +76,10 @@ const getPostsSchema = new Schema()
     .optional('category', { source: 'query' })
     .optional('expand', { source: 'query' })
     .optional('created_date', { source: 'query' })
+    .optional('page', { source: 'query' })
+    .optional('limit', { source: 'query' })
+    .optional('ids', { source: 'query' })
+    .optional('_id', { source: 'query' })
     .build();
 
 const getPostByIdSchema = new Schema()
@@ -174,6 +178,15 @@ const updateRoleSchema = new Schema()
     .required('role')
     .build();
 
+const getLogsSchema = new Schema()
+    .optional('page', { source: 'query' })
+    .optional('limit', { source: 'query' })
+    .optional('user', { source: 'query' })
+    .optional('post', { source: 'query' })
+    .optional('category', { source: 'query' })
+    .optional('type', { source: 'query' })
+    .build();
+
 module.exports = {
     loginUsernameSchema,
     loginGoogleSchema,
@@ -200,5 +213,6 @@ module.exports = {
     deleteCommentSchema,
     editCommentSchema,
     likeCommentSchema,
-    updateRoleSchema
+    updateRoleSchema,
+    getLogsSchema
 }

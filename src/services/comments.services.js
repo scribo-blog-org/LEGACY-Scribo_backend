@@ -263,7 +263,7 @@ async function likeComment(comment_id, profile) {
         throw new NotFoundError({ message: comment.message })
     }
 
-    if(comment.likes.some(id => id.equals(profile._id))) {
+    if(comment.likes.some(id => String(id) === String(profile._id))) {
         throw new ConflictError({ message: "You have already liked this comment!" })
     }
 
@@ -279,7 +279,7 @@ async function unlikeComment(comment_id, profile) {
         throw new NotFoundError({ message: comment.message })
     }
 
-    if(!comment.likes.some(id => id.equals(profile._id))) {
+    if(!comment.likes.some(id => String(id) === String(profile._id))) {
         throw new ConflictError({ message: "You have not liked this comment!" })
     }
 

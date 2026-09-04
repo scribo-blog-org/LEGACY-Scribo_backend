@@ -1,7 +1,7 @@
 const { deleteFile } = require("./aws.services")
 
 const { getUsersByIds, getUserById } = require('../db/users.db')
-const { getPostById, getPostByQuery, getPostsByQuery, createNewPost, updatePostById, deletePostById, doLikeToPost, doUnlikePost } = require('../db/posts')
+const { getPostById, getPostByQuery, getPostsByQuery, countPostsByQuery, createNewPost, updatePostById, deletePostById, doLikeToPost, doUnlikePost } = require('../db/posts')
 const { getCategoryById, getCategoriesByIds } = require('../db/category.js')
 const { addPostToSaved, removeNotification, addNotificationToUserById, removePostFromSaved, removePostFromSavedForUsers } = require('../db/profile')
 const { deleteCommentsByIds, getCommentsByPostId } = require('../db/comments.js')
@@ -15,6 +15,12 @@ const NotFoundError = require('../errors/NotFoundError')
 const AppError = require('../errors/AppError');
 const ConflictError = require('../errors/ConflictError');
 const BadRequestError = require('../errors/BadRequestError');
+const {
+    parsePagination,
+    omitPaginationFields,
+    paginationMeta,
+    asObjectIdFilter
+} = require('../utils/pagination')
 
 function normalizePostIdsFilter(params = {}) {
     const hasIdsQuery = Object.prototype.hasOwnProperty.call(params, 'ids')
@@ -187,15 +193,33 @@ async function editPost(id, data, profile) {
 }
 
 async function getPosts(params, expand) {
+    const { page, limit, skip } = parsePagination(params, { defaultLimit: 5, maxLimit: 50 })
+    params = omitPaginationFields(params)
     params = normalizePostIdsFilter(params);
 
     if (params.__emptyPostsResult) {
         delete params.__emptyPostsResult;
 
-        return []
+        return {
+            items: [],
+            pagination: paginationMeta({ page, limit, total: 0 })
+        }
     }
 
-    const posts = await getPostsByQuery(params);
+    if (params.author) {
+        params.author = asObjectIdFilter(params.author)
+    }
+
+    if (params.category) {
+        params.category = asObjectIdFilter(params.category)
+    }
+
+    const total = await countPostsByQuery(params)
+    const posts = await getPostsByQuery(params, {
+        skip,
+        limit,
+        sort: { created_date: -1 }
+    });
 
     const postIds = posts.map(post => post._id)
 
@@ -260,7 +284,10 @@ async function getPosts(params, expand) {
         }
     }
 
-    return posts
+    return {
+        items: posts,
+        pagination: paginationMeta({ page, limit, total })
+    }
 }
 
 async function getPost(id, expand) {
@@ -362,12 +389,18 @@ async function savePost(profile, id) {
     if(!(await getPostByQuery({ "_id": id }))) {
         throw new NotFoundError({ message: "Post not found!" })
     }
+
+    const actor = await getUserById(profile._id)
+
+    if (!actor) {
+        throw new NotFoundError({ message: "User not found!" })
+    }
     
-    if(profile.saved_posts.some((p) => String(p) === id )) {
+    if((actor.saved_posts || []).some((p) => String(p) === id )) {
         throw new ConflictError({ message: "Post is already in saved posts!" })
     }
 
-    const result =  await addPostToSaved(profile._id, id) 
+    const result =  await addPostToSaved(actor._id, id) 
     
     return {
         saved_posts: result.saved_posts
@@ -379,11 +412,17 @@ async function unsavePost(profile, id) {
         throw new NotFoundError({ message: "Post not found!" })
     }
 
-    if(!profile.saved_posts.some((p) => String(p) === id )) {
+    const actor = await getUserById(profile._id)
+
+    if (!actor) {
+        throw new NotFoundError({ message: "User not found!" })
+    }
+
+    if(!(actor.saved_posts || []).some((p) => String(p) === id )) {
         throw new ConflictError({ message: "Post is not in saved posts!" })
     }
 
-    const result = await removePostFromSaved(profile._id, id)
+    const result = await removePostFromSaved(actor._id, id)
 
 
     return {
@@ -406,7 +445,7 @@ async function likePost(profile, post_id) {
 
     const author = await getUserById(post.author)
     
-    if(!author._id.equals(profile._id)) {
+    if(String(author._id) !== String(profile._id)) {
         await addNotificationToUserById(author._id, { type: "like_post", user: profile._id, post: post_id })
     }
     

@@ -1,6 +1,6 @@
 const { getCommentById } = require('../../db/comments');
 const ForbiddenError  = require('../../errors/ForbiddenError');
-const { hasPermissions } = require('../roleChecks');
+const { getActor, hasPermissions, isResourceOwner } = require('../roleChecks');
 const PERMISSIONS = require('../permissions');
 
 const NotFoundError = require('../../errors/NotFoundError');
@@ -8,14 +8,21 @@ const NotFoundError = require('../../errors/NotFoundError');
 const canDelete = async (req, res, next) => {
     try {
         const comment = await getCommentById(req.params.id);
+        const actor = getActor(req)
         
-        if(!comment) { throw new NotFoundError(comment.message) }
+        if (!comment) {
+            throw new NotFoundError({ message: "Comment is not found" })
+        }
 
-        if(comment.author.toString() === req.profile._id.toString()) { return next() }
+        if (isResourceOwner(comment.author, actor.id)) {
+            return next()
+        }
 
-        if(hasPermissions(req.profile, PERMISSIONS.DELETE_ANY_COMMENT)) { return next() }
+        if (hasPermissions(actor, PERMISSIONS.DELETE_ANY_COMMENT)) {
+            return next()
+        }
 
-        throw new ForbiddenError("You don't have permission to delete this comment");
+        throw new ForbiddenError({ message: "You don't have permission to delete this comment" });
     } catch (error) {
         next(error);
     }
@@ -24,18 +31,23 @@ const canDelete = async (req, res, next) => {
 const canEdit = async (req, res, next) => {
     try {
         const comment = await getCommentById(req.params.id);
+        const actor = getActor(req)
         
-        if(!comment) { throw new NotFoundError(comment.message) }
+        if (!comment) {
+            throw new NotFoundError({ message: "Comment is not found" })
+        }
 
-        if(comment.author.toString() === req.profile._id.toString()) { return next() }
+        if (isResourceOwner(comment.author, actor.id)) {
+            return next()
+        }
 
-        throw new ForbiddenError("You don't have permission to edit this comment");
+        throw new ForbiddenError({ message: "You don't have permission to edit this comment" });
     } catch (error) {
         next(error);
     }
 }
 
-exports = module.exports = {
+module.exports = {
     canDelete,
     canEdit
 }

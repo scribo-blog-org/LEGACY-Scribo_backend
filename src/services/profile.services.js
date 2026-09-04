@@ -12,6 +12,24 @@ const UnAuthorizedError = require('../errors/UnAuthorizedError');
 const ConflictError = require('../errors/ConflictError')
 const AppError = require('../errors/AppError')
 
+function withAccessRole(user, auth) {
+    const role = auth?.role || user.role
+    const data = {
+        ...user,
+        role,
+        permissions: rolePermissions[role] ?? [],
+    }
+
+    if (roleManagement[role]) {
+        data.role_management = roleManagement[role]
+    }
+    else {
+        delete data.role_management
+    }
+
+    return data
+}
+
 async function getProfile(id) {
     const user = await getUserById(id, { with_saved_posts: true, with_notifications: true })
 
@@ -19,30 +37,27 @@ async function getProfile(id) {
         throw new UnAuthorizedError()
     }
 
-    const data = {
-        ...user,
-        permissions: rolePermissions[user.role] ?? [],
-    } 
-
-    if(roleManagement[user.role]) {
-        data.role_management = roleManagement[user.role]
-    }
-
-    return data
+    return withAccessRole(user)
 }
 
 async function editProfile(profile, data) {
+    const stored = await getUserById(profile._id)
+
+    if (!stored) {
+        throw new UnAuthorizedError()
+    }
+
     if(data.nick_name) {
         const nick_owner  = await getUserByQuery({ nick_name: data.nick_name })
         
-        if(nick_owner && nick_owner._id !== String(profile._id)) {
+        if(nick_owner && String(nick_owner._id) !== String(profile._id)) {
             throw new ConflictError({ message: "Nick name is already used by another user!" })
         }
     }
 
     if(Object.keys(data).includes("avatar")) {
-        if(profile.avatar) {
-            await deleteFile(profile.avatar)
+        if(stored.avatar) {
+            await deleteFile(stored.avatar)
         }
 
         if(data.avatar !== undefined && data.avatar !== null) { 
@@ -59,16 +74,7 @@ async function editProfile(profile, data) {
 
     const result = await editProfileById(profile._id, data)
 
-    let result_data = {
-        ...result,
-        permissions: rolePermissions[result.role] ?? [],
-    }
-
-    if(roleManagement[result.role]) {
-        result_data.role_management = roleManagement[result.role]
-    }
-
-    return result_data
+    return withAccessRole(result, profile)
 }
 
 async function readNotifications(profile) {
@@ -100,5 +106,6 @@ module.exports = {
     getProfile,
     editProfile,
     readNotifications,
-    getAuthProfile
+    getAuthProfile,
+    withAccessRole
 }
