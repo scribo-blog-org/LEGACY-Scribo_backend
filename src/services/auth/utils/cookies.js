@@ -45,7 +45,7 @@ function getRefreshCookies(req) {
         }
     }
 
-    return tokens
+    return tokens.reverse()
 }
 
 function getRefreshCookie(req) {

@@ -1,7 +1,31 @@
 const Session = require('../models/Session')
 const { REFRESH_TTL_MS } = require('../models/Session')
 
+let uniqueUserIndexChecked = false
+
+async function dropUniqueUserIndex() {
+    if (uniqueUserIndexChecked) {
+        return
+    }
+
+    uniqueUserIndexChecked = true
+
+    try {
+        const indexes = await Session.collection.indexes()
+        for (const index of indexes) {
+            const keys = Object.keys(index.key || {})
+            if (index.unique && keys.length === 1 && keys[0] === 'user') {
+                await Session.collection.dropIndex(index.name)
+            }
+        }
+    }
+    catch {
+        uniqueUserIndexChecked = false
+    }
+}
+
 async function createSession(data) {
+    await dropUniqueUserIndex()
     const session = await Session.create(data)
     return session.toObject()
 }

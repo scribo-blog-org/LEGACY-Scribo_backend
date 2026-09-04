@@ -52,31 +52,80 @@ function parseDevice(userAgent = "") {
     return os ? `${browser} · ${os}` : browser
 }
 
-async function resolveLocation(ip) {
-    if (!ip || ip === "127.0.0.1" || ip === "::1" || ip.startsWith("::ffff:127.")) {
-        return "Local"
+function isPrivateIp(ip) {
+    if (!ip) {
+        return true
     }
 
-    try {
-        const controller = new AbortController()
-        const timer = setTimeout(() => controller.abort(), 1200)
-        const response = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, {
-            signal: controller.signal,
-            headers: { "User-Agent": "scribo-session" }
-        })
-        clearTimeout(timer)
+    const normalized = ip.replace(/^::ffff:/, "")
 
-        if (!response.ok) {
+    if (
+        normalized === "127.0.0.1" ||
+        normalized === "::1" ||
+        normalized === "localhost"
+    ) {
+        return true
+    }
+
+    if (normalized.startsWith("10.") || normalized.startsWith("192.168.")) {
+        return true
+    }
+
+    if (normalized.startsWith("172.")) {
+        const second = Number(normalized.split(".")[1])
+        return second >= 16 && second <= 31
+    }
+
+    return false
+}
+
+function formatLocation(data, fallback) {
+    const city = data.city
+    const country = data.country_name || data.country
+    const parts = [city, country].filter(Boolean)
+
+    if (parts.length) {
+        return parts.join(", ")
+    }
+
+    return fallback
+}
+
+async function fetchGeo(url) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 2000)
+    const response = await fetch(url, {
+        signal: controller.signal,
+        headers: { "User-Agent": "scribo-session" }
+    })
+    clearTimeout(timer)
+
+    if (!response.ok) {
+        return null
+    }
+
+    return response.json()
+}
+
+async function resolveLocation(ip) {
+    try {
+        if (!isPrivateIp(ip)) {
+            const data = await fetchGeo(`https://ipapi.co/${encodeURIComponent(ip)}/json/`)
+            if (data) {
+                return formatLocation(data, ip)
+            }
             return ip
         }
 
-        const data = await response.json()
-        const parts = [data.city, data.country_name || data.country].filter(Boolean)
+        const data = await fetchGeo("https://ipapi.co/json/")
+        if (data) {
+            return formatLocation(data, "Unknown")
+        }
 
-        return parts.length ? parts.join(", ") : ip
+        return "Unknown"
     }
     catch {
-        return ip
+        return isPrivateIp(ip) ? "Unknown" : ip
     }
 }
 
