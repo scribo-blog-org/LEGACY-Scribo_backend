@@ -88,13 +88,34 @@ async function fetchGeo(url) {
     return response.json()
 }
 
-function fromIpapi(data, ip) {
-    const city = data?.city || ""
-    const country = data?.country_name || data?.country || ""
-    const region = data?.region || ""
+function fromIpwho(data, ip) {
+    if (!data?.success) {
+        return null
+    }
 
     return {
-        ip: ip || data?.ip || "",
+        ip: ip || data.ip || "",
+        city: data.city || "",
+        region: data.region || "",
+        country: data.country || ""
+    }
+}
+
+function fromIpapi(data, ip) {
+    if (!data || data.error) {
+        return null
+    }
+
+    const city = data.city || ""
+    const country = data.country_name || data.country || ""
+    const region = data.region || ""
+
+    if (!city && !country) {
+        return null
+    }
+
+    return {
+        ip: ip || data.ip || "",
         city,
         region,
         country
@@ -126,26 +147,38 @@ async function lookupGeo(ip, options = {}) {
         return empty
     }
 
-    try {
-        const url = isPrivateIp(address)
-            ? "https://ipapi.co/json/"
-            : `https://ipapi.co/${encodeURIComponent(address)}/json/`
-        const data = await fetchGeo(url)
-        const result = fromIpapi(data, address)
+    const urls = isPrivateIp(address)
+        ? ["https://ipwho.is/", "https://ipapi.co/json/"]
+        : [
+            `https://ipwho.is/${encodeURIComponent(address)}`,
+            `https://ipapi.co/${encodeURIComponent(address)}/json/`
+        ]
 
-        geoCache.set(cacheKey, result)
-        return result
+    try {
+        for (const url of urls) {
+            const data = await fetchGeo(url)
+            const result = url.includes("ipwho")
+                ? fromIpwho(data, address)
+                : fromIpapi(data, address)
+
+            if (result) {
+                geoCache.set(cacheKey, result)
+                return result
+            }
+        }
     }
     catch {
-        const fallback = {
-            ip: address,
-            city: "",
-            region: "",
-            country: ""
-        }
-        geoCache.set(cacheKey, fallback)
-        return fallback
+        // fallback below
     }
+
+    const fallback = {
+        ip: address,
+        city: "",
+        region: "",
+        country: ""
+    }
+    geoCache.set(cacheKey, fallback)
+    return fallback
 }
 
 function sanitizePlace(value) {
@@ -172,11 +205,6 @@ function clientGeoHint(body) {
 
 async function lookupVisitorGeo(req, body) {
     const ip = clientIp(req)
-
-    if (!isPrivateIp(ip)) {
-        return lookupGeo(ip)
-    }
-
     const hint = clientGeoHint(body)
 
     if (hint) {
@@ -186,6 +214,10 @@ async function lookupVisitorGeo(req, body) {
             region: hint.region,
             country: hint.country
         }
+    }
+
+    if (!isPrivateIp(ip)) {
+        return lookupGeo(ip)
     }
 
     const hintIp = normalizeIp(body?.ip)
@@ -218,5 +250,6 @@ module.exports = {
     isPrivateIp,
     lookupGeo,
     lookupVisitorGeo,
-    resolveLocation
+    resolveLocation,
+    formatLocation
 }

@@ -10,6 +10,8 @@ const schema = new Schema({
     city: { type: String, required: false, default: "" },
     region: { type: String, required: false, default: "" },
     country: { type: String, required: false, default: "" },
+    device: { type: String, required: false, default: "" },
+    device_kind: { type: String, required: false, default: "" },
     is_entry: { type: Boolean, required: true, default: false, index: true }
 })
 

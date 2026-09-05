@@ -29,6 +29,7 @@ const getSessionsController = require('../controllers/auth/getSessions.controlle
 const deleteSessionController = require('../controllers/auth/deleteSession.controller');
 
 const authMiddleware = require('../middlewares/auth.middleware');
+const optionalAuthMiddleware = require('../middlewares/optionalAuth.middleware');
 
 router.post(
     '/login/username',
@@ -76,7 +77,7 @@ router.post(
 
 router.post('/refresh', refreshController)
 
-router.post('/logout', logoutController)
+router.post('/logout', optionalAuthMiddleware, logoutController)
 
 router.get(
     '/sessions',

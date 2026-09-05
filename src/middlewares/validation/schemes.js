@@ -36,10 +36,18 @@ class Schema {
 const loginUsernameSchema = new Schema()
     .required('user_name')
     .required('password')
+    .optional('city')
+    .optional('region')
+    .optional('country')
+    .optional('ip')
     .build();
 
 const loginGoogleSchema = new Schema()
     .required('google_token')
+    .optional('city')
+    .optional('region')
+    .optional('country')
+    .optional('ip')
     .build();
 
 const registerEmailSchema = new Schema()

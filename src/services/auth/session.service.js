@@ -4,7 +4,7 @@ const { Types } = require("mongoose")
 const UnAuthorizedError = require("../../errors/UnAuthorizedError")
 const NotFoundError = require("../../errors/NotFoundError")
 
-const { encodeAccess, encodeRefresh, decodeRefresh } = require("./utils/jwt")
+const { encodeAccess, encodeRefresh, decodeRefresh, peekAccess } = require("./utils/jwt")
 const { getRefreshCookies } = require("./utils/cookies")
 const {
     createSession,
@@ -16,37 +16,18 @@ const {
     REFRESH_TTL_MS
 } = require("../../db/sessions.db")
 const { getUserById } = require("../../db/users.db")
-const { clientIp, resolveLocation } = require("../geo")
+const { clientIp, lookupVisitorGeo, formatLocation } = require("../geo")
+const { parseDevice } = require("../device")
 
 function hashToken(token) {
     return crypto.createHash("sha256").update(token).digest("hex")
 }
 
-function parseDevice(userAgent = "") {
-    if (!userAgent) {
-        return "Неизвестное устройство"
-    }
-
-    let browser = "Браузер"
-    if (userAgent.includes("Edg/")) browser = "Edge"
-    else if (userAgent.includes("Chrome/")) browser = "Chrome"
-    else if (userAgent.includes("Safari/") && !userAgent.includes("Chrome")) browser = "Safari"
-    else if (userAgent.includes("Firefox/")) browser = "Firefox"
-
-    let os = ""
-    if (userAgent.includes("Android")) os = "Android"
-    else if (userAgent.includes("iPhone") || userAgent.includes("iPad")) os = "iOS"
-    else if (userAgent.includes("Mac OS")) os = "macOS"
-    else if (userAgent.includes("Windows")) os = "Windows"
-    else if (userAgent.includes("Linux")) os = "Linux"
-
-    return os ? `${browser} · ${os}` : browser
-}
-
 async function issueSession(user, req) {
-    const ip = clientIp(req)
+    const geo = await lookupVisitorGeo(req, req.body)
+    const ip = geo.ip || clientIp(req)
     const device = parseDevice(req.headers["user-agent"])
-    const location = await resolveLocation(ip)
+    const location = formatLocation(geo, "Unknown")
     const expiresAt = new Date(Date.now() + REFRESH_TTL_MS)
     const sessionId = new Types.ObjectId()
     const refreshToken = encodeRefresh({
@@ -66,7 +47,7 @@ async function issueSession(user, req) {
     })
 
     return {
-        accessToken: encodeAccess(user),
+        accessToken: encodeAccess(user, sessionId),
         refreshToken
     }
 }
@@ -83,11 +64,25 @@ async function getCurrentRefreshPayload(req) {
 }
 
 async function logoutSession(req) {
+    const sessionIds = new Set()
+
     for (const token of getRefreshCookies(req)) {
         const payload = decodeRefresh(token)
+
         if (payload?.sessionId) {
-            await deleteSessionById(payload.sessionId)
+            sessionIds.add(String(payload.sessionId))
         }
+    }
+
+    const header = req.headers.authorization
+    const access = req.auth || (header ? peekAccess(header.split(" ")[1] || "") : null)
+
+    if (access?.sessionId) {
+        sessionIds.add(String(access.sessionId))
+    }
+
+    for (const sessionId of sessionIds) {
+        await deleteSessionById(sessionId)
     }
 }
 
@@ -135,12 +130,18 @@ async function refreshSession(req) {
             continue
         }
 
-        await updateSessionById(session._id, {
-            lastSeen: new Date()
-        })
+        const geo = await lookupVisitorGeo(req, req.body)
+        const patch = { lastSeen: new Date() }
+
+        if (geo.city || geo.country) {
+            patch.location = formatLocation(geo, session.location)
+            patch.ip = geo.ip || session.ip
+        }
+
+        await updateSessionById(session._id, patch)
 
         return {
-            accessToken: encodeAccess(user),
+            accessToken: encodeAccess(user, session._id),
             refreshToken: token
         }
     }

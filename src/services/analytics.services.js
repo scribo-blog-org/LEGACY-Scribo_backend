@@ -2,6 +2,7 @@ const { Types } = require("mongoose")
 const PERMISSIONS = require("../authorization/permissions")
 const { actorFromProfile, assertPermission } = require("../authorization/roleChecks")
 const { clientIp, lookupVisitorGeo } = require("./geo")
+const { parseDevice, parseDeviceKind } = require("./device")
 const {
     insertPageView,
     countDocumentsSince,
@@ -14,11 +15,13 @@ const {
     entriesByDay,
     topCities,
     recentEntries,
+    devicesByKind,
+    postsByCategory,
     PageView,
     User,
     Post,
     PostComment,
-    Log
+    Category
 } = require("../db/analytics.db")
 
 function utcDayString(date) {
@@ -106,6 +109,7 @@ async function trackVisit(body, profile, req) {
     const user = profileUserId(profile)
     const ip = clientIp(req)
     const geo = await lookupVisitorGeo(req, body)
+    const userAgent = req.headers["user-agent"] || ""
 
     return insertPageView({
         path,
@@ -115,7 +119,9 @@ async function trackVisit(body, profile, req) {
         ip: geo.ip || ip,
         city: geo.city,
         region: geo.region,
-        country: geo.country
+        country: geo.country,
+        device: parseDevice(userAgent),
+        device_kind: parseDeviceKind(userAgent)
     })
 }
 
@@ -146,7 +152,7 @@ async function getDashboard(query, profile) {
         new_users,
         new_posts,
         new_comments,
-        activity_events,
+        categories,
         registered_users,
         posts,
         comments,
@@ -157,6 +163,8 @@ async function getDashboard(query, profile) {
         paths,
         cities,
         recent,
+        devices,
+        category_posts,
         activity
     ] = await Promise.all([
         PageView.countDocuments(currentMatch),
@@ -172,7 +180,7 @@ async function getDashboard(query, profile) {
         countDocumentsSince(User, "created_date", from),
         countDocumentsSince(Post, "created_date", from),
         countDocumentsSince(PostComment, "created_date", from),
-        countDocumentsSince(Log, "date_time", from),
+        Category.estimatedDocumentCount(),
         User.estimatedDocumentCount(),
         Post.estimatedDocumentCount(),
         PostComment.estimatedDocumentCount(),
@@ -183,6 +191,8 @@ async function getDashboard(query, profile) {
         topPaths(from),
         topCities(from),
         recentEntries(from),
+        devicesByKind(from),
+        postsByCategory(),
         activityByType(from)
     ])
 
@@ -197,7 +207,7 @@ async function getDashboard(query, profile) {
             new_users,
             new_posts,
             new_comments,
-            activity_events,
+            categories,
             registered_users,
             posts,
             comments,
@@ -215,6 +225,8 @@ async function getDashboard(query, profile) {
         }),
         top_paths: paths,
         cities,
+        devices,
+        categories: category_posts,
         recent_entries: recent,
         activity: activity.map((item) => ({
             type: item._id,
