@@ -46,7 +46,15 @@ async function readNotificationsByUserId(user_id) {
 }
 
 async function addNotificationToUserById(user_id, notification) {
-    const notification_types = ["follow", "unfollow", "comment_post", "reply_comment", "like_post"]
+    const notification_types = [
+        "follow",
+        "unfollow",
+        "comment_post",
+        "reply_comment",
+        "like_post",
+        "support_reply",
+        "support_status"
+    ]
 
     if(!notification || !notification.type || !notification_types.includes(notification.type)) {
         throw new Error(`Incorrect type of notification!\nnotification: ${JSON.stringify(notification, null, 2)}`)
@@ -71,22 +79,26 @@ async function addNotificationToUserById(user_id, notification) {
         object.comment = new Types.ObjectId(notification.comment);
     }
 
-    if (Object.keys(object).length > 0) {
-        const updated_user = await User.findOneAndUpdate(
-            { _id: user_id },
-            {
-                $push: {
-                    notifications: {
-                        type: notification.type,
-                        ...object
-                    }
-                }
-            },
-            { new: true }
-        );
-
-        return updated_user
+    if (notification?.support_request) {
+        object.support_request = notification.support_request;
     }
+
+    if (notification?.support_status) {
+        object.support_status = notification.support_status;
+    }
+
+    return User.findOneAndUpdate(
+        { _id: user_id },
+        {
+            $push: {
+                notifications: {
+                    type: notification.type,
+                    ...object
+                }
+            }
+        },
+        { new: true }
+    );
 }
 
 async function editProfileById(user_id, update_fields) {

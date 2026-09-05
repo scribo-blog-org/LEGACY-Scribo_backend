@@ -184,7 +184,46 @@ const getLogsSchema = new Schema()
     .optional('user', { source: 'query' })
     .optional('post', { source: 'query' })
     .optional('category', { source: 'query' })
+    .optional('support_request', { source: 'query' })
     .optional('type', { source: 'query' })
+    .build();
+
+const createSupportRequestSchema = new Schema()
+    .optional('email')
+    .required('kind')
+    .required('message')
+    .build();
+
+const getSupportRequestsSchema = new Schema()
+    .optional('page', { source: 'query' })
+    .optional('limit', { source: 'query' })
+    .optional('status', { source: 'query' })
+    .optional('kind', { source: 'query' })
+    .optional('sort', { source: 'query' })
+    .optional('order', { source: 'query' })
+    .build();
+
+const getSupportRequestSchema = new Schema()
+    .required('id', { source: 'params' })
+    .build();
+
+const replySupportRequestSchema = new Schema()
+    .required('id', { source: 'params' })
+    .required('text')
+    .build();
+
+const getPublicSupportRequestSchema = new Schema()
+    .required('key', { source: 'params' })
+    .build();
+
+const replyPublicSupportRequestSchema = new Schema()
+    .required('key', { source: 'params' })
+    .required('text')
+    .build();
+
+const updateSupportRequestStatusSchema = new Schema()
+    .required('id', { source: 'params' })
+    .required('status')
     .build();
 
 module.exports = {
@@ -214,5 +253,12 @@ module.exports = {
     editCommentSchema,
     likeCommentSchema,
     updateRoleSchema,
-    getLogsSchema
+    getLogsSchema,
+    createSupportRequestSchema,
+    getSupportRequestsSchema,
+    getSupportRequestSchema,
+    replySupportRequestSchema,
+    getPublicSupportRequestSchema,
+    replyPublicSupportRequestSchema,
+    updateSupportRequestStatusSchema
 }

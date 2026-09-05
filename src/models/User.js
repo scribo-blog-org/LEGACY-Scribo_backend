@@ -47,7 +47,9 @@ let schema = new Schema({
             type: { type: String },
             user: { type: Types.ObjectId, ref: "User", required: false },
             post: { type: Types.ObjectId, ref: "Post", required: false },
-            comment: { type: Types.ObjectId, ref: "PostComment", required: false }
+            comment: { type: Types.ObjectId, ref: "PostComment", required: false },
+            support_request: { type: String, required: false },
+            support_status: { type: String, required: false }
         }
     ]
 })

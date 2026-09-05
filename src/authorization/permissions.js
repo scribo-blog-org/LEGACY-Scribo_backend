@@ -14,4 +14,6 @@ module.exports = {
 
     VIEW_LOGS: "view_logs",
 
+    MANAGE_SUPPORT: "manage_support",
+
 };

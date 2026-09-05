@@ -55,6 +55,7 @@ app.use('/api/auth', require('./routes/auth.routes'))
 app.use('/api/profile', require('./routes/profile.routes'))
 app.use('/api/docs', require('./routes/docs.routes'))
 app.use('/api/logs', require('./routes/logs.routes'))
+app.use('/api/support', require('./routes/support.routes'))
 app.use('/api', require('./routes/default.routes'))
 app.use('/', require('./routes/default.routes'))
 

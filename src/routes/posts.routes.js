@@ -30,8 +30,6 @@ const getCommentsController = require('../controllers/comments/getComments.contr
 const likePostController = require('../controllers/posts/likePost.controller')
 const unlikePostController = require('../controllers/posts/unlikePost.controller')
 
-const PostPolicy = require('../authorization/policies/post.policy')
-
 router.get(
     '/',
     validateMiddleware(getPostsSchema),
@@ -49,7 +47,6 @@ router.post(
     authMiddleware,
     uploadMiddleware(['featured_image']),
     validateMiddleware(createPostSchema),
-    PostPolicy.canCreate,
     createPostController
 )
 
@@ -58,7 +55,6 @@ router.patch(
     authMiddleware,
     uploadMiddleware(['featured_image']),
     validateMiddleware(editPostSchema),
-    PostPolicy.canEdit,
     editPostController
 )
 
@@ -78,7 +74,6 @@ router.get(
 router.delete(
     '/:id',
     authMiddleware,
-    PostPolicy.canDelete,
     validateMiddleware(deletePostSchema),
     deletePostController
 )

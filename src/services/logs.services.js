@@ -1,7 +1,15 @@
 const { getLogsByQuery, countLogsByQuery, idMatch } = require('../db/logs')
 const { parsePagination, omitPaginationFields, paginationMeta } = require('../utils/pagination')
+const PERMISSIONS = require('../authorization/permissions')
+const { actorFromProfile, assertPermission } = require('../authorization/roleChecks')
 
-const getLogs = async (params = {}) => {
+const getLogs = async (params = {}, profile) => {
+    assertPermission(
+        actorFromProfile(profile),
+        PERMISSIONS.VIEW_LOGS,
+        "You don't have permission to view logs"
+    )
+
     const { page, limit, skip } = parsePagination(params, { defaultLimit: 9, maxLimit: 50 })
     const query = omitPaginationFields(params)
     const filter = {}
@@ -16,6 +24,10 @@ const getLogs = async (params = {}) => {
 
     if (query.category) {
         Object.assign(filter, idMatch('data.category', query.category))
+    }
+
+    if (query.support_request) {
+        Object.assign(filter, idMatch('data.support_request', query.support_request))
     }
 
     if (query.type) {

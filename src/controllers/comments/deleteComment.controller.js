@@ -2,7 +2,7 @@ const { deleteComment } = require('../../services/comments.services')
 
 const deleteCommentController = async (req, res, next) => {
     try {
-        const result = await deleteComment(req.params.id)
+        const result = await deleteComment(req.params.id, req.profile)
 
         res.status(200).json({
             status: true,
