@@ -298,6 +298,42 @@ function validate(fields) {
                     errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect access key!", data: field.value }})
                 }
                 break
+            case "path": {
+                const path = String(field.value || "").trim()
+                if (!path.startsWith("/") || path.length > 200 || /\s/.test(path)) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect path!", data: field.value }})
+                }
+                break
+            }
+            case "visitor_id":
+                if (!field.value || !/^[a-zA-Z0-9-]{8,64}$/.test(String(field.value))) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect visitor id!", data: field.value }})
+                }
+                break
+            case "referrer":
+                if (field.value && String(field.value).length > 500) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Referrer is too long!", data: field.value }})
+                }
+                break
+            case "city":
+            case "region":
+            case "country":
+                if (field.value && String(field.value).length > 80) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Location is too long!", data: field.value }})
+                }
+                break
+            case "ip":
+                if (field.value && String(field.value).length > 64) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect ip!", data: field.value }})
+                }
+                break
+            case "days": {
+                const days = Number.parseInt(field.value, 10)
+                if (![7, 14, 30].includes(days)) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Days must be 7, 14 or 30!", data: field.value }})
+                }
+                break
+            }
         }
     }
     return {
