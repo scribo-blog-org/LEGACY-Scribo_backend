@@ -119,12 +119,15 @@ function validate(fields) {
                 }
                 break
             case "password":
+            case "current_password":
+            case "new_password":
+            case "new_password_confirm":
                 if(!field.value || field.value.length < 8) {
-                    errors = push_to_errors(errors, field.source, { type: "password", data: { message: "Passowrd must be longer than 7 characters!", data: field.value }})
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Passowrd must be longer than 7 characters!", data: field.value }})
                     break
                 }
                 if(field.value.length > 20) {
-                    errors = push_to_errors(errors, field.source, { type: "password", data: { message: "Passowrd must be less than 21 characters!", data: field.value }})
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Passowrd must be less than 21 characters!", data: field.value }})
                 }
                 break
             case "nick_name":
