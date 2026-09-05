@@ -10,9 +10,9 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-async function sendEmail({ to, subject, code }) {
+async function sendEmail({ to, subject, code, html }) {
     try {
-        const htmlContent = verifyEmailTemplate({
+        const htmlContent = html || verifyEmailTemplate({
             code,
             appName: 'Scribo Blog',
             expiresInMinutes: 10

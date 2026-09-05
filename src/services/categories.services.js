@@ -3,6 +3,8 @@ const { getPostsByQuery } = require('../db/posts')
 
 const ConflictError = require("../errors/ConflictError")
 const NotFoundError = require("../errors/NotFoundError")
+const PERMISSIONS = require('../authorization/permissions')
+const { actorFromProfile, assertPermission } = require('../authorization/roleChecks')
 
 async function getCategories() {
     const categories = await getAllCategories()
@@ -23,6 +25,12 @@ async function getCategories() {
 }
 
 async function editCategory(id, data, profile) {
+    assertPermission(
+        actorFromProfile(profile),
+        PERMISSIONS.EDIT_ANY_CATEGORY,
+        "You don't have permission to edit a category"
+    )
+
     const category = await getCategoryById(id)
 
     if(!category) {
@@ -57,6 +65,12 @@ async function editCategory(id, data, profile) {
 }
 
 async function createCategory(data, profile) {
+    assertPermission(
+        actorFromProfile(profile),
+        PERMISSIONS.CREATE_CATEGORY,
+        "You don't have permission to create a category"
+    )
+
     const is_name_exists = await getCategoryByName(data.name)
 
     if(is_name_exists) {
@@ -78,6 +92,12 @@ async function createCategory(data, profile) {
 }
 
 async function deleteCategory(id, profile) {
+    assertPermission(
+        actorFromProfile(profile),
+        PERMISSIONS.DELETE_ANY_CATEGORY,
+        "You don't have permission to delete a category"
+    )
+
     const category = await getCategoryById(id)
 
     if(!category) {

@@ -255,6 +255,49 @@ function validate(fields) {
                     errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Role must be not empty!", data: field.value }})
                 }
                 break
+            case "kind":
+                if(!['complaint', 'request', 'help'].includes(field.value)) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect request kind!", data: field.value }})
+                }
+                break
+            case "status":
+                if(!['new', 'in_review', 'reviewed'].includes(field.value)) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect status!", data: field.value }})
+                }
+                break
+            case "message":
+                if(!field.value || field.value.trim().length === 0) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Message must be not empty!", data: field.value }})
+                    break
+                }
+                if(field.value.length > 2000) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Message must be less than 2001 characters!", data: field.value }})
+                }
+                break
+            case "text":
+                if(!field.value || field.value.trim().length === 0) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Reply text must be not empty!", data: field.value }})
+                    break
+                }
+                if(field.value.length > 2000) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Reply text must be less than 2001 characters!", data: field.value }})
+                }
+                break
+            case "sort":
+                if(!['created_date', 'updated_date'].includes(field.value)) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect sort field!", data: field.value }})
+                }
+                break
+            case "order":
+                if(!['asc', 'desc'].includes(field.value)) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect sort order!", data: field.value }})
+                }
+                break
+            case "key":
+                if(!field.value || !/^[a-f0-9]{32,64}$/i.test(String(field.value))) {
+                    errors = push_to_errors(errors, field.source, { type: field.type, data: { message: "Incorrect access key!", data: field.value }})
+                }
+                break
         }
     }
     return {

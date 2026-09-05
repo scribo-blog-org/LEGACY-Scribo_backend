@@ -21,6 +21,8 @@ const {
     paginationMeta,
     asObjectIdFilter
 } = require('../utils/pagination')
+const PERMISSIONS = require('../authorization/permissions')
+const { actorFromProfile, assertPermission, assertOwnerOrPermission } = require('../authorization/roleChecks')
 
 function normalizePostIdsFilter(params = {}) {
     const hasIdsQuery = Object.prototype.hasOwnProperty.call(params, 'ids')
@@ -87,6 +89,12 @@ async function createPost({
     featured_image,
     profile
 }) {
+    assertPermission(
+        actorFromProfile(profile),
+        PERMISSIONS.CREATE_POST,
+        "You don't have permission to create a post"
+    )
+
     const category_data = await getCategoryById(category)
 
     if(!category_data) {
@@ -138,6 +146,13 @@ async function editPost(id, data, profile) {
     if(!post) {
         throw new NotFoundError({ message: "Post not found!" })
     }
+
+    assertOwnerOrPermission(
+        post.author,
+        actorFromProfile(profile),
+        PERMISSIONS.EDIT_ANY_POST,
+        "You don't have permission to update a post"
+    )
 
     if(data.category) {
         const category_data = await getCategoryById(data.category)
@@ -332,6 +347,13 @@ async function deletePost(id, profile) {
     if(!post) {
         throw new NotFoundError({ message: "Post not found!" })
     }
+
+    assertOwnerOrPermission(
+        post.author,
+        actorFromProfile(profile),
+        PERMISSIONS.DELETE_ANY_POST,
+        "You don't have permission to delete a post"
+    )
 
     await removePostFromSavedForUsers(id)
 

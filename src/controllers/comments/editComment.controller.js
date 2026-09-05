@@ -2,7 +2,7 @@ const { editComment } = require('../../services/comments.services')
 
 const editCommentController = async (req, res, next) => {
     try {
-        const result = await editComment(req.params.id, req.body.comment_text)
+        const result = await editComment(req.params.id, req.body.comment_text, req.profile)
         
         res.status(200).json({
             status: true,

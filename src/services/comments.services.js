@@ -1,5 +1,8 @@
 const NotFoundError = require('../errors/NotFoundError');
 const ConflictError = require('../errors/ConflictError');
+const PERMISSIONS = require('../authorization/permissions')
+const { actorFromProfile, assertOwnerOrPermission, isResourceOwner } = require('../authorization/roleChecks')
+const ForbiddenError = require('../errors/ForbiddenError')
 
 const { addCommentToPost,
     addReplyToComment,
@@ -177,7 +180,7 @@ function buildCommentsTreesByPost(comments) {
     return result
 }
 
-async function deleteComment(comment_id) {
+async function deleteComment(comment_id, profile) {
     const rootComment = await getCommentById(comment_id)
 
     if (!rootComment) {
@@ -185,6 +188,13 @@ async function deleteComment(comment_id) {
             message: "Comment not found!"
         })
     }
+
+    assertOwnerOrPermission(
+        rootComment.author,
+        actorFromProfile(profile),
+        PERMISSIONS.DELETE_ANY_COMMENT,
+        "You don't have permission to delete this comment"
+    )
 
     const comments = await getCommentsByPostId(rootComment.post_id)
 
@@ -238,11 +248,15 @@ function getCommentIdsToDelete(comments, rootCommentId) {
     return result
 }
 
-async function editComment(comment_id, comment_text) {
+async function editComment(comment_id, comment_text, profile) {
     const comment = await getCommentById(comment_id)
 
     if(!comment) {
         throw new NotFoundError({ message: comment.message })
+    }
+
+    if (!isResourceOwner(comment.author, actorFromProfile(profile).id)) {
+        throw new ForbiddenError({ message: "You don't have permission to edit this comment" })
     }
 
     const result = await updateCommentById(comment_id, comment_text)

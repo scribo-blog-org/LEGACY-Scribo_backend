@@ -28,6 +28,7 @@ module.exports = {
 
         PERMISSIONS.MANAGE_ROLES,
         PERMISSIONS.VIEW_LOGS,
+        PERMISSIONS.MANAGE_SUPPORT,
     ],
 
     [ROLES.TECH_ADMIN]: [
@@ -43,5 +44,6 @@ module.exports = {
 
         PERMISSIONS.MANAGE_ROLES,
         PERMISSIONS.VIEW_LOGS,
+        PERMISSIONS.MANAGE_SUPPORT,
     ],
 };
