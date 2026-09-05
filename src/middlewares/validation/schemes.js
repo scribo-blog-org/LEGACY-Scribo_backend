@@ -79,6 +79,22 @@ const verificationEmailConfirmSchema = new Schema()
     .required('email_code')
     .build();
 
+const forgotPasswordSchema = new Schema()
+    .required('email')
+    .build();
+
+const confirmPasswordResetSchema = new Schema()
+    .required('email')
+    .required('email_code')
+    .build();
+
+const resetPasswordSchema = new Schema()
+    .required('email')
+    .required('email_code')
+    .required('new_password')
+    .required('new_password_confirm')
+    .build();
+
 const getPostsSchema = new Schema()
     .optional('author', { source: 'query' })
     .optional('category', { source: 'query' })
@@ -133,6 +149,12 @@ const updateProfileSchema = new Schema()
     .optional('avatar')
     .optional('is_email_public')
     .optional('is_saved_posts_public')
+    .build();
+
+const changePasswordSchema = new Schema()
+    .required('current_password')
+    .required('new_password')
+    .required('new_password_confirm')
     .build();
 
 const savePostSchema = new Schema()
@@ -256,11 +278,15 @@ module.exports = {
     verificationGoogleSchema,
     verificationEmailSchema,
     verificationEmailConfirmSchema,
+    forgotPasswordSchema,
+    confirmPasswordResetSchema,
+    resetPasswordSchema,
     getPostByIdSchema,
     createPostSchema,
     editPostSchema,
     deletePostSchema,
     updateProfileSchema,
+    changePasswordSchema,
     savePostSchema,
     getUserByNickNameSchema,
     getUsersSchema,

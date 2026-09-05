@@ -4,12 +4,16 @@ const { getUserByQuery, getUserById } = require('../db/users.db')
 const { readNotificationsByUserId, editProfileById } = require('../db/profile')
 
 const { deleteFile, uploadImage } = require('./aws.services');
+const { comparePassword, setPasswordHash } = require('./auth/utils/password')
+const { sendEmail } = require('./auth/utils/email')
+const passwordChangedTemplate = require('./auth/templates/password_changed')
 
 const rolePermissions = require('../authorization/rolePermissions');
 const roleManagement = require('../authorization/roleManagement');
 
 const UnAuthorizedError = require('../errors/UnAuthorizedError');
 const ConflictError = require('../errors/ConflictError')
+const BadRequestError = require('../errors/BadRequestError')
 const AppError = require('../errors/AppError')
 
 function withAccessRole(user, auth) {
@@ -91,6 +95,80 @@ async function readNotifications(profile) {
     }
 }     
 
+function fieldError(field, message) {
+    return new BadRequestError({
+        errors: {
+            body: {
+                [field]: {
+                    message,
+                    data: ""
+                }
+            }
+        }
+    })
+}
+
+async function notifyPasswordChanged(user) {
+    if (!user?.email) {
+        return
+    }
+
+    const settingsUrl = process.env.FRONTEND_ORIGIN
+        ? `${String(process.env.FRONTEND_ORIGIN).replace(/\/$/, "")}/settings?tab=sessions`
+        : ""
+
+    const time = new Date().toLocaleString("ru-RU", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Europe/Kyiv"
+    })
+
+    try {
+        await sendEmail({
+            to: user.email,
+            subject: "Пароль аккаунта Scribo изменён",
+            html: passwordChangedTemplate({
+                nickName: user.nick_name,
+                time,
+                settingsUrl
+            })
+        })
+    }
+    catch (error) {
+        console.error("Failed to send password change email", error)
+    }
+}
+
+async function changePassword(profile, { current_password, new_password, new_password_confirm }) {
+    if (new_password !== new_password_confirm) {
+        throw fieldError("new_password_confirm", "Пароли не совпадают")
+    }
+
+    if (current_password === new_password) {
+        throw fieldError("new_password", "Новый пароль должен отличаться от текущего")
+    }
+
+    const user = await getUserById(profile._id, { with_password: true })
+
+    if (!user) {
+        throw new UnAuthorizedError()
+    }
+
+    if (!user.password) {
+        throw fieldError("current_password", "Для этого аккаунта нельзя сменить пароль")
+    }
+
+    if (!await comparePassword(current_password, user.password)) {
+        throw fieldError("current_password", "Неверный текущий пароль")
+    }
+
+    await editProfileById(profile._id, { password: setPasswordHash(new_password) })
+    notifyPasswordChanged(user)
+}
+
 async function getAuthProfile(token) {
     const user_id = decode(token)
     const user = await getUserById(user_id, { with_notifications: true })
@@ -105,7 +183,9 @@ async function getAuthProfile(token) {
 module.exports = {
     getProfile,
     editProfile,
+    changePassword,
     readNotifications,
     getAuthProfile,
+    notifyPasswordChanged,
     withAccessRole
 }
