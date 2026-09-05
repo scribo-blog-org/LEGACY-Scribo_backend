@@ -18,6 +18,45 @@ const {
 const { getUserById } = require("../../db/users.db")
 const { clientIp, lookupVisitorGeo, formatLocation } = require("../geo")
 const { parseDevice } = require("../device")
+const { sendEmail } = require("./utils/email")
+const loginAlertTemplate = require("./templates/login_alert")
+
+async function notifyLogin(user, session) {
+    if (!user?.email) {
+        return
+    }
+
+    const settingsUrl = process.env.FRONTEND_ORIGIN
+        ? `${String(process.env.FRONTEND_ORIGIN).replace(/\/$/, "")}/settings?tab=sessions`
+        : ""
+
+    const time = new Date().toLocaleString("ru-RU", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Europe/Kyiv"
+    })
+
+    try {
+        await sendEmail({
+            to: user.email,
+            subject: "Новый вход в аккаунт Scribo",
+            html: loginAlertTemplate({
+                nickName: user.nick_name,
+                device: session.device,
+                location: session.location,
+                ip: session.ip,
+                time,
+                settingsUrl
+            })
+        })
+    }
+    catch (error) {
+        console.error("Failed to send login alert email", error)
+    }
+}
 
 function hashToken(token) {
     return crypto.createHash("sha256").update(token).digest("hex")
@@ -45,6 +84,8 @@ async function issueSession(user, req) {
         lastSeen: new Date(),
         expiresAt
     })
+
+    notifyLogin(user, { device, location, ip })
 
     return {
         accessToken: encodeAccess(user, sessionId),
