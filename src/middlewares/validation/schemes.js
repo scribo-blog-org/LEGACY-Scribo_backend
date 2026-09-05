@@ -188,6 +188,20 @@ const getLogsSchema = new Schema()
     .optional('type', { source: 'query' })
     .build();
 
+const trackVisitSchema = new Schema()
+    .required('path')
+    .required('visitor_id')
+    .optional('referrer')
+    .optional('city')
+    .optional('region')
+    .optional('country')
+    .optional('ip')
+    .build();
+
+const getDashboardSchema = new Schema()
+    .optional('days', { source: 'query' })
+    .build();
+
 const createSupportRequestSchema = new Schema()
     .optional('email')
     .required('kind')
@@ -254,6 +268,8 @@ module.exports = {
     likeCommentSchema,
     updateRoleSchema,
     getLogsSchema,
+    trackVisitSchema,
+    getDashboardSchema,
     createSupportRequestSchema,
     getSupportRequestsSchema,
     getSupportRequestSchema,
