@@ -3,6 +3,7 @@ const User = require("../models/User")
 const Post = require("../models/Post")
 const PostComment = require("../models/PostComment")
 const Log = require("../models/Log")
+const Category = require("../models/Category")
 
 const DEDUPE_MS = 8000
 const SESSION_MS = 30 * 60 * 1000
@@ -216,6 +217,50 @@ async function likesTotal() {
     return (posts[0]?.count || 0) + (comments[0]?.count || 0)
 }
 
+async function devicesByKind(from) {
+    return PageView.aggregate([
+        { $match: { created_at: { $gte: from } } },
+        {
+            $group: {
+                _id: { $ifNull: ["$device", ""] },
+                visits: { $sum: 1 }
+            }
+        },
+        { $sort: { visits: -1 } }
+    ]).then((rows) => rows
+        .filter((row) => row._id)
+        .map((row) => ({ kind: row._id, visits: row.visits })))
+}
+
+async function postsByCategory() {
+    return Post.aggregate([
+        {
+            $group: {
+                _id: "$category",
+                posts: { $sum: 1 }
+            }
+        },
+        {
+            $lookup: {
+                from: Category.collection.name,
+                localField: "_id",
+                foreignField: "_id",
+                as: "category"
+            }
+        },
+        { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+        {
+            $project: {
+                name: { $ifNull: ["$category.name", "Без категории"] },
+                color: "$category.color",
+                posts: 1,
+                _id: 0
+            }
+        },
+        { $sort: { posts: -1 } }
+    ])
+}
+
 module.exports = {
     insertPageView,
     countDocumentsSince,
@@ -229,9 +274,12 @@ module.exports = {
     entriesByDay,
     topCities,
     recentEntries,
+    devicesByKind,
+    postsByCategory,
     PageView,
     User,
     Post,
     PostComment,
-    Log
+    Log,
+    Category
 }
